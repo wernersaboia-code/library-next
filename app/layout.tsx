@@ -6,6 +6,7 @@ import { WelcomeToast } from '@/components/welcome-toast';
 import { cn } from '@/lib/utils';
 import { Filter, FilterFallback } from '@/components/filters';
 import { Search, SearchFallback } from '@/components/search';
+import NavBar from '@/components/nav-bar';
 import { Suspense } from 'react';
 import SessionProvider from '@/components/session-provider';
 
@@ -40,7 +41,12 @@ export default function RootLayout({
             </div>
             <div className="flex-1 flex flex-col min-h-screen">
               <div className="sticky top-0 z-10 bg-gray-100 dark:bg-black">
-                <div className="mx-8 py-4">
+                <div className="mx-8 pt-2">
+                  <Suspense fallback={null}>
+                    <NavBar />
+                  </Suspense>
+                </div>
+                <div className="mx-8 pb-4">
                   <Suspense fallback={<SearchFallback />}>
                     <Search />
                   </Suspense>

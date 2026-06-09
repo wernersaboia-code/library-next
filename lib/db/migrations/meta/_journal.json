@@ -15,6 +15,13 @@
       "when": 1781038902230,
       "tag": "0001_perfect_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781039880884,
+      "tag": "0002_wise_vargas",
+      "breakpoints": true
     }
   ]
 }

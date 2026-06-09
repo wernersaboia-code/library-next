@@ -149,3 +149,10 @@ export const driveFiles = pgTable(
         fileIdIdx: index('idx_drive_files_file_id').on(table.fileId),
     })
 );
+
+export const driveSettings = pgTable('drive_settings', {
+    id: serial('id').primaryKey(),
+    folderId: text('folder_id').notNull(),
+    folderName: text('folder_name'),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
