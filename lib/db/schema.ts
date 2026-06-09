@@ -128,3 +128,24 @@ export const bookToAuthorRelations = relations(bookToAuthor, ({ one }) => ({
         references: [authors.id],
     }),
 }));
+
+// -- Tabelas de integração com Google Drive --
+
+export const driveFiles = pgTable(
+    'drive_files',
+    {
+        id: serial('id').primaryKey(),
+        bookId: integer('book_id')
+            .notNull()
+            .references(() => books.id),
+        fileId: text('file_id').notNull().unique(),
+        mimeType: text('mime_type').notNull(),
+        size: text('size'),
+        modifiedTime: text('modified_time'),
+        importedAt: timestamp('imported_at').defaultNow().notNull(),
+    },
+    (table) => ({
+        bookIdIdx: index('idx_drive_files_book_id').on(table.bookId),
+        fileIdIdx: index('idx_drive_files_file_id').on(table.fileId),
+    })
+);
