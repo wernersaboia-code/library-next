@@ -16,7 +16,7 @@ export default function Loading() {
         </div>
       </div>
       <div className="mt-auto p-4 border-t">
-        <div className="h-10" />
+        <div className="h-10 text-sm text-muted-foreground text-center">Carregando...</div>
       </div>
     </div>
   );

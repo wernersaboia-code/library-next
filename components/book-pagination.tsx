@@ -21,7 +21,6 @@ function FormValues({
 
   return (
     <div data-pending={pending ? '' : undefined}>
-      {/* Keep the existing search params */}
       {Object.entries(searchParams).map(
         ([key, value]) =>
           key !== 'page' && (
@@ -69,8 +68,7 @@ export function BookPagination({
         </PaginationItem>
 
         <div className="text-sm text-muted-foreground">
-          {totalResults.toLocaleString()} results (
-          {currentPage.toLocaleString()} of {totalPages.toLocaleString()})
+          {totalResults.toLocaleString()} resultados (página {currentPage.toLocaleString()} de {totalPages.toLocaleString()})
         </div>
 
         <PaginationItem>

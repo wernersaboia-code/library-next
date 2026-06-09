@@ -9,8 +9,8 @@ import { Search, SearchFallback } from '@/components/search';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Book Inventory — Next.js App Router',
-  description: 'View 2 million books from Goodreads.',
+  title: 'Book Inventory',
+  description: 'Seu catálogo pessoal de livros.',
 };
 
 export default function RootLayout({
@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={cn(
           'bg-gray-100 font-sans antialiased dark:bg-black dark:text-white',

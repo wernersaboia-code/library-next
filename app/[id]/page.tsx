@@ -6,36 +6,27 @@ import {
   ArrowLeftIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { fetchBookById, fetchBooksWithPagination } from '@/lib/db/queries';
+import { fetchBookById } from '@/lib/db/queries';
 import { Photo } from '@/components/photo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 
 const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'spa', label: 'Spanish' },
-  { value: 'ita', label: 'Italian' },
-  { value: 'ara', label: 'Arabic' },
-  { value: 'fre', label: 'French' },
-  { value: 'ger', label: 'German' },
-  { value: 'ind', label: 'Indonesian' },
-  { value: 'por', label: 'Portuguese' },
+  { value: 'en', label: 'Inglês' },
+  { value: 'spa', label: 'Espanhol' },
+  { value: 'ita', label: 'Italiano' },
+  { value: 'ara', label: 'Árabe' },
+  { value: 'fre', label: 'Francês' },
+  { value: 'ger', label: 'Alemão' },
+  { value: 'ind', label: 'Indonésio' },
+  { value: 'por', label: 'Português' },
 ];
 
 function getLanguageLabel(code: string | null): string {
-  if (!code) return 'Unknown';
+  if (!code) return 'Desconhecido';
   const language = LANGUAGES.find((lang) => lang.value === code.toLowerCase());
-  return language ? language.label : 'Unknown';
-}
-
-// Prerender the first page of books
-export async function generateStaticParams() {
-  const books = await fetchBooksWithPagination({});
-
-  return books.map((books) => ({
-    id: books.id.toString(),
-  }));
+  return language ? language.label : 'Desconhecido';
 }
 
 export default async function Page(
@@ -52,7 +43,7 @@ export default async function Page(
     <ScrollArea className="px-4 h-full">
       <Button variant="ghost" className="mb-4" asChild>
         <Link href={`/?${stringifySearchParams(searchParams)}`}>
-          <ArrowLeftIcon className="mr-2 h-4 w-4" /> Back to Books
+          <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
         </Link>
       </Button>
 
@@ -83,7 +74,7 @@ export default async function Page(
               {Number(book.average_rating).toFixed(1)}
             </span>
             <span className="text-gray-600 ml-2">
-              ({Number(book.ratings_count).toLocaleString()} ratings)
+              ({Number(book.ratings_count).toLocaleString()} avaliações)
             </span>
           </div>
 
@@ -92,7 +83,7 @@ export default async function Page(
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="flex items-center">
               <BookOpenIcon className="w-5 h-5 mr-2 text-gray-600" />
-              <span>{book.num_pages} pages</span>
+              <span>{book.num_pages} páginas</span>
             </div>
             <div className="flex items-center">
               <GlobeIcon className="w-5 h-5 mr-2 text-gray-600" />
@@ -103,7 +94,7 @@ export default async function Page(
               <span>{book.publication_year}</span>
             </div>
             <div className="flex items-center">
-              <span>ISBN: {book.isbn || 'None'}</span>
+              <span>ISBN: {book.isbn || 'Nenhum'}</span>
             </div>
           </div>
         </div>

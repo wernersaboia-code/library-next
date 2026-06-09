@@ -1,18 +1,23 @@
-# Next.js Book Inventory
+# Book Inventory
 
-Demo: https://next-books-search.vercel.app
+Catálogo pessoal de livros com leitor integrado. Os livros são armazenados no Google Drive e acessados pelo navegador.
 
-This is a book inventory app built with Next.js, Drizzle, and PostgreSQL. The database contains over 2,000,000 books from Goodreads. [Full dataset here](https://mengtingwan.github.io/data/goodreads.html).
+## Funcionalidades
 
-## Database Setup
+- Catálogo visual com grid de capas
+- Busca full-text com debounce
+- Filtros por ano, avaliação, idioma, páginas, status de leitura e série
+- Leitor EPUB e PDF integrado
+- Métricas e estatísticas de leitura
+- Anotações, destaques e bookmarks
+- Tradutor integrado
+- PWA para leitura offline no celular
+- Dark mode
 
-This is currently using a Postgres extension called `unaccent` to remove accents from the book titles. This also uses the pgvector extension to use Postgres as a vector store. To install these extensions, run the following command on your database:
+## Stack
 
-```sql
-CREATE EXTENSION IF NOT EXISTS unaccent;
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-## Deploy on Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/templates/next.js/next-book-inventory)
+- **Frontend:** Next.js, React, Tailwind CSS, shadcn/ui
+- **Backend:** Next.js API Routes + Server Components
+- **Banco:** PostgreSQL (Neon) + Drizzle ORM
+- **Armazenamento:** Google Drive
+- **Deploy:** Vercel

@@ -46,7 +46,7 @@ function SearchBase({ initialQuery }: { initialQuery: string }) {
       className="relative flex flex-1 flex-shrink-0 w-full rounded shadow-sm"
     >
       <label htmlFor="search" className="sr-only">
-        Search
+        Buscar
       </label>
       <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
@@ -55,7 +55,7 @@ function SearchBase({ initialQuery }: { initialQuery: string }) {
         type="text"
         name="search"
         id="search"
-        placeholder="Search books..."
+        placeholder="Buscar livros..."
         value={inputValue}
         className="w-full border-0 px-10 py-6 text-base md:text-sm overflow-hidden focus-visible:ring-0"
       />

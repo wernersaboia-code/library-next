@@ -5,8 +5,7 @@ import { books, authors, bookToAuthor } from './schema';
 import { SearchParams } from '@/lib/url-state';
 
 export const ITEMS_PER_PAGE = 28;
-export const EMPTY_IMAGE_URL =
-    'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png';
+export const EMPTY_IMAGE_URL = '';
 
 // — Filtros individuais —
 
