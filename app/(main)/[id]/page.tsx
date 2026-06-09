@@ -11,6 +11,9 @@ import { Photo } from '@/components/photo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
+import { db } from '@/lib/db/drizzle';
+import { driveFiles } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -39,13 +42,27 @@ export default async function Page(
   const params = await props.params;
   const book = await fetchBookById(params.id);
 
+  const driveFile = await db
+    .select({ fileId: driveFiles.fileId, mimeType: driveFiles.mimeType })
+    .from(driveFiles)
+    .where(eq(driveFiles.bookId, parseInt(params.id)))
+    .limit(1)
+    .then((r) => r[0]);
+
   return (
     <ScrollArea className="px-4 h-full">
-      <Button variant="ghost" className="mb-4" asChild>
-        <Link href={`/?${stringifySearchParams(searchParams)}`}>
-          <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" asChild>
+          <Link href={`/?${stringifySearchParams(searchParams)}`}>
+            <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
+          </Link>
+        </Button>
+        {driveFile?.mimeType === 'application/epub+zip' && (
+          <Button asChild>
+            <Link href={`/read/${params.id}`}>Ler</Link>
+          </Button>
+        )}
+      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-1/2 md:w-1/4 mx-auto md:mx-0">

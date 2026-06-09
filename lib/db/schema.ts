@@ -156,3 +156,14 @@ export const driveSettings = pgTable('drive_settings', {
     folderName: text('folder_name'),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const readingProgress = pgTable('reading_progress', {
+    id: serial('id').primaryKey(),
+    bookId: integer('book_id')
+        .notNull()
+        .references(() => books.id)
+        .unique(),
+    cfi: text('cfi'),
+    percentage: decimal('percentage', { precision: 5, scale: 2 }),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
