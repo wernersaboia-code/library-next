@@ -57,9 +57,17 @@ export default async function Page(
             <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
           </Link>
         </Button>
-        {driveFile?.mimeType === 'application/epub+zip' && (
+        {driveFile?.mimeType && (
           <Button asChild>
-            <Link href={`/read/${params.id}`}>Ler</Link>
+            <Link
+              href={
+                driveFile.mimeType === 'application/epub+zip'
+                  ? `/read/${params.id}`
+                  : `/read/pdf/${params.id}`
+              }
+            >
+              Ler
+            </Link>
           </Button>
         )}
       </div>
