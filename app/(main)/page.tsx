@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BooksGrid } from '@/components/grid';
 import { BookPagination } from '@/components/book-pagination';
+import Dashboard from '@/components/dashboard';
 import {
   estimateTotalBooks,
   fetchBooksWithPagination,
@@ -26,6 +27,9 @@ export default async function Page(
 
   return (
     <div className="flex flex-col h-full">
+      <Suspense fallback={null}>
+        <Dashboard />
+      </Suspense>
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">
           <BooksGrid books={books} searchParams={parsedSearchParams} />

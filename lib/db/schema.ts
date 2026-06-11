@@ -165,5 +165,16 @@ export const readingProgress = pgTable('reading_progress', {
         .unique(),
     cfi: text('cfi'),
     percentage: decimal('percentage', { precision: 5, scale: 2 }),
+    minutesRead: integer('minutes_read').default(0).notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const readingSessions = pgTable('reading_sessions', {
+    id: serial('id').primaryKey(),
+    bookId: integer('book_id')
+        .notNull()
+        .references(() => books.id),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    endedAt: timestamp('ended_at'),
+    durationSeconds: integer('duration_seconds').default(0).notNull(),
 });

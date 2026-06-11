@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import ePub from 'epubjs';
 
+const HEARTBEAT_INTERVAL = 30000;
+
 export default function ReaderPage() {
   const params = useParams();
   const viewerRef = useRef<HTMLDivElement>(null);
@@ -59,7 +61,20 @@ export default function ReaderPage() {
       }, 10000);
     });
 
+    // Heartbeat de tempo de leitura
+    const heartbeat = setInterval(() => {
+      fetch('/api/reading/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookId: parseInt(bookId),
+          seconds: HEARTBEAT_INTERVAL / 1000,
+        }),
+      });
+    }, HEARTBEAT_INTERVAL);
+
     return () => {
+      clearInterval(heartbeat);
       rendition.destroy();
     };
   }, [bookId]);

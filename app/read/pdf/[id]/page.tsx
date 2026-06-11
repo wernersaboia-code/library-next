@@ -6,6 +6,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+const HEARTBEAT_INTERVAL = 30000;
+
 export default function PdfReaderPage() {
   const params = useParams();
   const bookId = params.id as string;
@@ -21,6 +23,21 @@ export default function PdfReaderPage() {
       .then((data) => {
         if (data?.cfi) setPageNumber(parseInt(data.cfi, 10));
       });
+  }, [bookId]);
+
+  useEffect(() => {
+    const heartbeat = setInterval(() => {
+      fetch('/api/reading/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookId: parseInt(bookId),
+          seconds: HEARTBEAT_INTERVAL / 1000,
+        }),
+      });
+    }, HEARTBEAT_INTERVAL);
+
+    return () => clearInterval(heartbeat);
   }, [bookId]);
 
   const onLoadSuccess = useCallback(
