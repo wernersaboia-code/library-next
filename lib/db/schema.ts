@@ -178,3 +178,17 @@ export const readingSessions = pgTable('reading_sessions', {
     endedAt: timestamp('ended_at'),
     durationSeconds: integer('duration_seconds').default(0).notNull(),
 });
+
+export const annotations = pgTable('annotations', {
+    id: serial('id').primaryKey(),
+    bookId: integer('book_id')
+        .notNull()
+        .references(() => books.id),
+    type: text('type').notNull(), // 'highlight', 'bookmark', 'note'
+    cfi: text('cfi'),
+    page: integer('page'),
+    textContent: text('text_content'),
+    note: text('note'),
+    color: text('color').default('#ffff00'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
