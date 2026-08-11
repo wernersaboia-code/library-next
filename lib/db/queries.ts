@@ -138,7 +138,7 @@ export async function estimateTotalBooks(searchParams: SearchParams) {
     ${whereClause ? sql`WHERE ${whereClause}` : sql``}
   `);
 
-    const planRows = (explainResult.rows[0] as any)['QUERY PLAN'][0]['Plan'][
+    const planRows = (explainResult[0] as any)['QUERY PLAN'][0]['Plan'][
         'Plan Rows'
         ];
     return planRows;

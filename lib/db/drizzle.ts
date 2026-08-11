@@ -1,12 +1,14 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import dotenv from 'dotenv';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import * as schema from './schema';
 
-dotenv.config();
+const url = process.env.POSTGRES_URL;
+if (!url) throw new Error('POSTGRES_URL environment variable is not set');
 
-if (!process.env.POSTGRES_URL) {
-  throw new Error('POSTGRES_URL environment variable is not set');
-}
+export const client = postgres(url, {
+  max: 10,
+  idle_timeout: 20,
+  prepare: false, // obrigatório com o pooler em modo transaction do Supabase
+});
 
-export const sql = neon(process.env.POSTGRES_URL);
-export const db = drizzle(sql);
+export const db = drizzle(client, { schema });
