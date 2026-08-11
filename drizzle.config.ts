@@ -6,7 +6,7 @@ dotenv.config();
 const url = process.env.POSTGRES_MIGRATION_URL ?? process.env.POSTGRES_URL;
 if (!url) {
   throw new Error(
-    'POSTGRES_MIGRATION_URL or POSTGRES_URL environment variable is not set'
+    'Defina POSTGRES_MIGRATION_URL (papel owner) ou POSTGRES_URL no .env'
   );
 }
 
