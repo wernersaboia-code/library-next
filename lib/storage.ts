@@ -27,13 +27,23 @@ function isQuota(msg: string) {
   return /exceeded|quota|maximum allowed size|payload too large/i.test(msg);
 }
 
+const COVER_CONTENT_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+};
+
 export async function uploadCover(
   userId: string, bookId: number, buf: Buffer, ext: string
 ): Promise<string> {
+  const contentType = COVER_CONTENT_TYPES[ext];
+  if (!contentType) {
+    throw new Error(`Extensão de capa não suportada: ${ext}`);
+  }
   const path = `${userId}/${bookId}/cover.${ext}`;
   const bucket = client().storage.from(COVERS_BUCKET);
   const { error } = await bucket.upload(path, buf, {
-    contentType: ext === 'png' ? 'image/png' : 'image/jpeg',
+    contentType,
     upsert: true,
   });
   if (error) {
