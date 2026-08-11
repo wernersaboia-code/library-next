@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import * as ThumbHash from 'thumbhash';
 import { db } from './drizzle';
 import { books, authors, bookToAuthor } from './schema';
+import { getOrCreateAppUserId } from './users';
 
 dotenv.config();
 
@@ -100,6 +101,14 @@ async function main() {
     if (!fs.existsSync(CALIBRE_DB)) {
         throw new Error(`metadata.db não encontrado em: ${CALIBRE_DB}`);
     }
+
+    const importUserEmail = process.env.IMPORT_USER_EMAIL;
+    if (!importUserEmail) {
+        throw new Error(
+            'Defina IMPORT_USER_EMAIL no .env — os livros importados precisam de um app_users dono.'
+        );
+    }
+    const userId = await getOrCreateAppUserId(importUserEmail);
 
     // Carrega o banco SQLite em memória
     const SQL      = await initSqlJs();
@@ -251,6 +260,7 @@ async function main() {
             const inserted = await db
                 .insert(books)
                 .values({
+                    userId,
                     isbn,
                     isbn13,
                     title: book.title,
@@ -267,7 +277,7 @@ async function main() {
                     read_status: 'não lido',
                     image_url,
                     thumbhash,
-                    title_tsv: book.title,
+                    title_source: book.title,
                 })
                 .onConflictDoNothing()
                 .returning({ id: books.id });

@@ -3,23 +3,26 @@ import { fetchFileBuffer, getDriveDownloadUrl } from '@/lib/drive';
 import { parseEpubMetadata, extractCoverFromEpub } from '@/lib/ebook';
 import { db } from '@/lib/db/drizzle';
 import { books, authors, bookToAuthor, driveFiles } from '@/lib/db/schema';
-import { sql } from 'drizzle-orm';
+import { getOrCreateAppUserId } from '@/lib/db/users';
+import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.accessToken)
+  if (!session?.accessToken || !session?.user?.email)
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   const { fileId, fileName, mimeType } = await req.json();
   if (!fileId || !mimeType)
     return NextResponse.json({ error: 'fileId e mimeType obrigatórios' }, { status: 400 });
 
+  const userId = await getOrCreateAppUserId(session.user.email);
+
   // Verifica se já foi importado
   const existing = await db
     .select({ id: driveFiles.id })
     .from(driveFiles)
-    .where(sql`${driveFiles.fileId} = ${fileId}`)
+    .where(and(eq(driveFiles.userId, userId), eq(driveFiles.fileId, fileId)))
     .limit(1);
 
   if (existing.length > 0)
@@ -34,12 +37,13 @@ export async function POST(req: Request) {
       const [book] = await db
         .insert(books)
         .values({
+          userId,
           title: meta.title,
           description: meta.description,
           language_code: meta.language,
           publisher: meta.publisher,
           isbn: meta.isbn,
-          title_tsv: meta.title,
+          title_source: meta.title,
         })
         .returning({ id: books.id });
 
@@ -74,10 +78,11 @@ export async function POST(req: Request) {
 
       // Registra o arquivo do Drive
       await db.insert(driveFiles).values({
+        userId,
         bookId: book.id,
         fileId,
         mimeType,
-        size: null,
+        sizeBytes: null,
         modifiedTime: null,
       });
 

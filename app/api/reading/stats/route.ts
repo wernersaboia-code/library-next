@@ -33,9 +33,9 @@ export async function GET() {
     .then((r) => Number(r[0].total));
 
   const totalMinutes = await db
-    .select({ total: sql<number>`coalesce(sum(${readingProgress.minutesRead}), 0)` })
+    .select({ total: sql<number>`coalesce(sum(${readingProgress.secondsRead}), 0)` })
     .from(readingProgress)
-    .then((r) => Number(r[0].total));
+    .then((r) => Math.floor(Number(r[0].total) / 60));
 
   // Streak: conta dias consecutivos com sessões de leitura
   const streak = await db
