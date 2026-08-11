@@ -1,8 +1,19 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      // O Next.js substitui `server-only` por um módulo que lança erro
+      // fora de Server Components; o Vitest não tem esse bundler, então
+      // aliasamos para um shim vazio só nos testes.
+      'server-only': fileURLToPath(
+        new URL('./test/mocks/server-only.ts', import.meta.url)
+      ),
+    },
+  },
   test: {
     environment: 'node',
     setupFiles: ['./test/setup.ts'],
