@@ -8,6 +8,7 @@ import {
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
 import { parseSearchParams } from '@/lib/url-state';
+import { getCurrentUserId } from '@/lib/auth';
 
 export default async function Page(
   props: {
@@ -16,10 +17,11 @@ export default async function Page(
 ) {
   const searchParams = await props.searchParams;
   const parsedSearchParams = parseSearchParams(searchParams);
+  const userId = await getCurrentUserId();
 
   const [books, estimatedTotal] = await Promise.all([
-    fetchBooksWithPagination(parsedSearchParams),
-    estimateTotalBooks(parsedSearchParams),
+    fetchBooksWithPagination(userId, parsedSearchParams),
+    estimateTotalBooks(userId, parsedSearchParams),
   ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);

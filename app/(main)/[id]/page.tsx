@@ -14,6 +14,7 @@ import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 import { db } from '@/lib/db/drizzle';
 import { driveFiles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getCurrentUserId } from '@/lib/auth';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -40,7 +41,8 @@ export default async function Page(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const book = await fetchBookById(params.id);
+  const userId = await getCurrentUserId();
+  const book = await fetchBookById(userId, params.id);
 
   const driveFile = await db
     .select({ fileId: driveFiles.fileId, mimeType: driveFiles.mimeType })
