@@ -170,4 +170,21 @@ describe('importBook — EPUB', () => {
     const [book] = await ctx.sql`select id from books where id = ${r.bookId}`;
     expect(book).toBeDefined(); // o livro existe; só não tem cache
   });
+
+  it('importa PDF usando o nome do arquivo como título', async () => {
+    stubDrive('exemplo.pdf');
+    const r = await importBook(params({
+      fileId: 'f-pdf',
+      fileName: 'Dom Casmurro.pdf',
+      mimeType: 'application/pdf',
+    }));
+
+    expect(r.title).toBe('Dom Casmurro');
+    const [book] = await ctx.sql`
+      select num_pages from books where id = ${r.bookId}`;
+    expect(book.num_pages).toBe(3);
+    const links = await ctx.sql`
+      select author_id from book_to_author where book_id = ${r.bookId}`;
+    expect(links).toHaveLength(0);
+  });
 });
