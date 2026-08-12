@@ -35,27 +35,36 @@ const jpeg = new Uint8Array([
 
 const capitulo = strToU8('<html><body><p>Olá</p></body></html>');
 
-// level: 0 => armazenado sem compressão (STORE). O leitor de ZIP em
-// lib/ebook.ts só descomprime o método STORE (0); um epub deflatado (o
-// padrão do fflate) não seria parseável por ele.
-const opts = { level: 0 };
-
+// Compressão DEFLATE default do fflate — é o formato real que EPUBs
+// baixados do Google Drive usam, então as fixtures principais precisam
+// exercitar esse caminho (lib/ebook.ts lê via fflate.unzipSync, que
+// descomprime tanto STORE quanto DEFLATE).
 writeFileSync('test/fixtures/valido.epub', zipSync({
   'META-INF/container.xml': strToU8(container),
   'OEBPS/content.opf': strToU8(opf(true)),
   'OEBPS/cover.jpg': jpeg,
   'OEBPS/c1.xhtml': capitulo,
-}, opts));
+}));
 
 writeFileSync('test/fixtures/sem-capa.epub', zipSync({
   'META-INF/container.xml': strToU8(container),
   'OEBPS/content.opf': strToU8(opf(false)),
   'OEBPS/c1.xhtml': capitulo,
-}, opts));
+}));
+
+// Mesmo conteúdo de valido.epub, mas armazenado sem compressão (STORE) —
+// garante que o leitor de ZIP também funciona para esse método.
+const storeOpts = { level: 0 };
+writeFileSync('test/fixtures/valido-store.epub', zipSync({
+  'META-INF/container.xml': strToU8(container),
+  'OEBPS/content.opf': strToU8(opf(true)),
+  'OEBPS/cover.jpg': jpeg,
+  'OEBPS/c1.xhtml': capitulo,
+}, storeOpts));
 
 // zip válido, sem container.xml → parseEpubMetadata deve lançar
 writeFileSync('test/fixtures/malformado.epub', zipSync({
   'leiame.txt': strToU8('isto não é um epub'),
-}, opts));
+}, storeOpts));
 
 console.log('fixtures geradas');

@@ -147,6 +147,16 @@ describe('importBook — EPUB', () => {
     expect(uploadBookFile).not.toHaveBeenCalled();
   });
 
+  it('importa tanto EPUB comprimido em DEFLATE quanto em STORE', async () => {
+    stubDrive('valido.epub'); // DEFLATE (compressão default do fflate)
+    const deflate = await importBook(params({ fileId: 'f-deflate' }));
+    expect(deflate.title).toBe('O Livro de Teste');
+
+    stubDrive('valido-store.epub'); // STORE (sem compressão)
+    const store = await importBook(params({ fileId: 'f-store' }));
+    expect(store.title).toBe('O Livro de Teste');
+  });
+
   it('conclui o import mesmo se o Storage falhar (degradação)', async () => {
     // Resolução #1 do controlador: QUALQUER falha de Storage degrada para
     // cached=false; o livro e os metadados sempre persistem.
