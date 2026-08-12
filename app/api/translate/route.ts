@@ -1,14 +1,37 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUserId } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+const MAX_TEXT_LENGTH = 5000;
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email)
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
 
   const { text, source, target } = await req.json();
   if (!text || !target)
     return NextResponse.json({ error: 'text e target obrigatórios' }, { status: 400 });
+
+  // Limite de tamanho: hoje existia só no cliente. Trunca aqui também para
+  // não deixar um cliente malicioso mandar textos enormes (custo real por
+  // caractere na API do Google). Checado ANTES do rate limit: é uma
+  // rejeição/normalização barata, sem custo de banco.
+  const safeText: string = text.length > MAX_TEXT_LENGTH
+    ? text.slice(0, MAX_TEXT_LENGTH)
+    : text;
+
+  const limit = Number(process.env.TRANSLATE_HOURLY_LIMIT ?? 200);
+  const { allowed, remaining } = await checkRateLimit(userId, 'translate', limit);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Limite de traduções por hora atingido. Tente mais tarde.' },
+      { status: 429, headers: { 'Retry-After': '3600' } }
+    );
+  }
 
   const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
   if (!apiKey)
@@ -16,7 +39,7 @@ export async function POST(req: Request) {
 
   try {
     const params = new URLSearchParams({
-      q: text,
+      q: safeText,
       target,
       format: 'text',
     });
@@ -33,7 +56,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: data.error?.message || 'Erro na tradução' }, { status: res.status });
 
     const translated = data.data?.translations?.[0]?.translatedText;
-    return NextResponse.json({ translatedText: translated, detectedSourceLanguage: data.data?.translations?.[0]?.detectedSourceLanguage });
+    return NextResponse.json(
+      {
+        translatedText: translated,
+        detectedSourceLanguage: data.data?.translations?.[0]?.detectedSourceLanguage,
+      },
+      { headers: { 'X-RateLimit-Remaining': String(remaining) } }
+    );
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
