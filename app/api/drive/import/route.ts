@@ -1,103 +1,33 @@
-import { getDriveToken, getCurrentUserId, DriveAuthError } from '@/lib/auth';
-import { fetchFileBuffer, getDriveDownloadUrl } from '@/lib/drive';
-import { parseEpubMetadata, extractCoverFromEpub } from '@/lib/ebook';
-import { db } from '@/lib/db/drizzle';
-import { books, authors, bookToAuthor, driveFiles } from '@/lib/db/schema';
-import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { getDriveToken, getCurrentUserId } from '@/lib/auth';
+import { importBook, AlreadyImportedError } from '@/lib/import-book';
+import { errorResponse } from '@/lib/errors';
 
 export async function POST(req: Request) {
-  let accessToken: string;
-  let userId: string;
   try {
-    accessToken = await getDriveToken();
-    userId = await getCurrentUserId();
-  } catch (err) {
-    if (err instanceof DriveAuthError)
-      return NextResponse.json({ error: err.message }, { status: 401 });
-    throw err;
-  }
+    const userId = await getCurrentUserId();
+    const accessToken = await getDriveToken();
+    const { fileId, fileName, mimeType, size } = await req.json();
 
-  const { fileId, fileName, mimeType } = await req.json();
-  if (!fileId || !mimeType)
-    return NextResponse.json({ error: 'fileId e mimeType obrigatórios' }, { status: 400 });
-
-  // Verifica se já foi importado
-  const existing = await db
-    .select({ id: driveFiles.id })
-    .from(driveFiles)
-    .where(and(eq(driveFiles.userId, userId), eq(driveFiles.fileId, fileId)))
-    .limit(1);
-
-  if (existing.length > 0)
-    return NextResponse.json({ error: 'Livro já importado' }, { status: 409 });
-
-  try {
-    if (mimeType === 'application/epub+zip') {
-      const buffer = await fetchFileBuffer(accessToken, fileId);
-      const meta = parseEpubMetadata(buffer);
-
-      // Insere o livro
-      const [book] = await db
-        .insert(books)
-        .values({
-          userId,
-          title: meta.title,
-          description: meta.description,
-          language_code: meta.language,
-          publisher: meta.publisher,
-          isbn: meta.isbn,
-          title_source: meta.title,
-        })
-        .returning({ id: books.id });
-
-      // Insere autor(es)
-      for (const authorName of meta.authors) {
-        const [author] = await db
-          .insert(authors)
-          .values({ id: crypto.randomUUID(), name: authorName })
-          .onConflictDoNothing({ target: authors.name })
-          .returning({ id: authors.id });
-
-        if (author) {
-          await db
-            .insert(bookToAuthor)
-            .values({ bookId: book.id, authorId: author.id })
-            .onConflictDoNothing();
-        }
-      }
-
-      // Extrai e salva a capa
-      if (meta.coverPath) {
-        const coverBuffer = await extractCoverFromEpub(buffer, meta.coverPath);
-        if (coverBuffer) {
-          const base64 = Buffer.from(coverBuffer).toString('base64');
-          const ext = meta.coverPath.split('.').pop() || 'png';
-          await db
-            .update(books)
-            .set({ image_url: `/api/cover/${book.id}.${ext}?data=${base64}` })
-            .where(sql`${books.id} = ${book.id}`);
-        }
-      }
-
-      // Registra o arquivo do Drive
-      await db.insert(driveFiles).values({
-        userId,
-        bookId: book.id,
-        fileId,
-        mimeType,
-        sizeBytes: null,
-        modifiedTime: null,
-      });
-
-      return NextResponse.json({ success: true, bookId: book.id, title: meta.title });
+    if (!fileId || !mimeType) {
+      return NextResponse.json(
+        { error: 'fileId e mimeType são obrigatórios' }, { status: 400 }
+      );
     }
 
-    return NextResponse.json({ error: 'Formato não suportado' }, { status: 400 });
+    const result = await importBook({
+      userId, accessToken, fileId,
+      fileName: fileName ?? '',
+      mimeType,
+      sizeBytes: size ? Number(size) : undefined,
+    });
+    return NextResponse.json({ success: true, ...result });
   } catch (err) {
-    return NextResponse.json(
-      { error: 'Erro ao importar', details: String(err) },
-      { status: 500 }
-    );
+    if (err instanceof AlreadyImportedError) {
+      return NextResponse.json(
+        { error: 'Livro já importado', bookId: err.bookId }, { status: 409 }
+      );
+    }
+    return errorResponse(err, 'Erro ao importar o livro');
   }
 }

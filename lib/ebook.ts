@@ -21,7 +21,10 @@ export function parseEpubMetadata(buffer: ArrayBuffer): EpubMetadata {
   const containerStr = extractFileFromZip(view, 'META-INF/container.xml');
   if (!containerStr) throw new Error('container.xml not found');
 
-  const parser = new XMLParser();
+  // ignoreAttributes: false é obrigatório — todo o metadado do EPUB vive em
+  // atributos (full-path, href, media-type, id). Com o default (true) o
+  // parser descarta esses atributos e o import quebra para qualquer arquivo.
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
   const container = parser.parse(containerStr);
 
   const opfPath =
