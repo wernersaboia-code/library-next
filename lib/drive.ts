@@ -68,6 +68,19 @@ export function getDriveDownloadUrl(fileId: string): string {
   return `${DRIVE_FILES_URL}/${fileId}?alt=media`;
 }
 
+export async function fetchDriveFileStream(
+  accessToken: string,
+  fileId: string,
+  range?: string | null
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+  if (range) headers.Range = range;
+
+  return fetch(getDriveDownloadUrl(fileId), { headers });
+}
+
 export async function fetchFileBuffer(
   accessToken: string,
   fileId: string

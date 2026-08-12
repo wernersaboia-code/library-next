@@ -1,54 +1,73 @@
-import { getDriveToken, DriveAuthError } from '@/lib/auth';
-import { db } from '@/lib/db/drizzle';
-import { driveFiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { getDriveToken, getCurrentUserId } from '@/lib/auth';
+import { withUser } from '@/lib/db/with-user';
+import { driveFiles } from '@/lib/db/schema';
+import { createSignedUrl } from '@/lib/storage';
+import { fetchDriveFileStream } from '@/lib/drive';
+import { errorResponse } from '@/lib/errors';
 
 export async function GET(req: Request) {
-  let accessToken: string;
   try {
-    accessToken = await getDriveToken();
-  } catch (err) {
-    if (err instanceof DriveAuthError)
-      return NextResponse.json({ error: err.message }, { status: 401 });
-    throw err;
-  }
+    const userId = await getCurrentUserId();
+    const bookId = Number(new URL(req.url).searchParams.get('bookId'));
 
-  const { searchParams } = new URL(req.url);
-  const bookId = searchParams.get('bookId');
+    if (!Number.isInteger(bookId) || bookId <= 0) {
+      return NextResponse.json({ error: 'bookId inválido' }, { status: 400 });
+    }
 
-  if (!bookId)
-    return NextResponse.json({ error: 'bookId é obrigatório' }, { status: 400 });
+    const [file] = await withUser(userId, (tx) =>
+      tx.select({
+        fileId: driveFiles.fileId,
+        mimeType: driveFiles.mimeType,
+        cachedPath: driveFiles.cachedPath,
+      })
+        .from(driveFiles)
+        .where(eq(driveFiles.bookId, bookId))
+        .limit(1)
+    );
 
-  // Busca o fileId do Drive associado ao livro
-  const driveFile = await db
-    .select({ fileId: driveFiles.fileId })
-    .from(driveFiles)
-    .where(eq(driveFiles.bookId, parseInt(bookId)))
-    .limit(1)
-    .then((r) => r[0]);
+    // RLS já filtrou por dono: ausência significa "não existe para você".
+    if (!file) {
+      return NextResponse.json(
+        { error: 'Arquivo não encontrado' }, { status: 404 }
+      );
+    }
 
-  if (!driveFile)
-    return NextResponse.json({ error: 'Drive file não encontrado' }, { status: 404 });
+    // Arquivo já cacheado no Storage: devolve uma signed URL e não toca no
+    // Drive. Se a assinatura falhar (Storage indisponível), não caímos de
+    // volta para o proxy do Drive — o arquivo pode nem estar mais lá — e o
+    // catch geral abaixo devolve um erro genérico.
+    if (file.cachedPath) {
+      return NextResponse.redirect(await createSignedUrl(file.cachedPath), 302);
+    }
 
-  const url = `https://www.googleapis.com/drive/v3/files/${driveFile.fileId}?alt=media`;
+    const range = req.headers.get('range');
+    const upstream = await fetchDriveFileStream(
+      await getDriveToken(), file.fileId, range
+    );
 
-  try {
-    const driveRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    if (!driveRes.ok)
-      return NextResponse.json({ error: 'Drive API error', status: driveRes.status }, { status: driveRes.status });
+    if (!upstream.ok && upstream.status !== 206) {
+      return NextResponse.json(
+        { error: 'Falha ao ler o arquivo no Drive' },
+        { status: upstream.status === 404 ? 404 : 502 }
+      );
+    }
 
     const headers = new Headers();
-    headers.set('Content-Type', driveRes.headers.get('content-type') || 'application/epub+zip');
-    headers.set('Content-Length', driveRes.headers.get('content-length') || '');
+    headers.set('Content-Type', upstream.headers.get('content-type') ?? file.mimeType);
     headers.set('Cache-Control', 'private, max-age=3600');
-    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Accept-Ranges', 'bytes');
+    for (const h of ['content-length', 'content-range']) {
+      const v = upstream.headers.get(h);
+      if (v) headers.set(h, v);
+    }
+    // Sem Access-Control-Allow-Origin: rota autenticada por cookie.
 
-    return new NextResponse(driveRes.body, { status: 200, headers });
+    return new NextResponse(upstream.body, {
+      status: upstream.status, headers,
+    });
   } catch (err) {
-    return NextResponse.json({ error: 'Erro ao ler arquivo do Drive', details: String(err) }, { status: 500 });
+    return errorResponse(err, 'Erro ao abrir o livro');
   }
 }
