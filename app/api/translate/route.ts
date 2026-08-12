@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { errorResponse } from '@/lib/errors';
 
 const MAX_TEXT_LENGTH = 5000;
 
@@ -64,6 +65,6 @@ export async function POST(req: Request) {
       { headers: { 'X-RateLimit-Remaining': String(remaining) } }
     );
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return errorResponse(err, 'Erro na tradução');
   }
 }

@@ -1,0 +1,34 @@
+import { describe, it, expect, vi } from 'vitest';
+import { errorResponse } from '@/lib/errors';
+import { DriveAuthError } from '@/lib/auth-tokens';
+
+describe('errorResponse', () => {
+  it('nunca vaza a mensagem original no corpo', async () => {
+    const r = errorResponse(
+      new Error('conexão falhou em 10.0.0.5:5432'), 'Erro ao importar'
+    );
+    const body = await r.json();
+    expect(JSON.stringify(body)).not.toContain('10.0.0.5');
+    expect(body.error).toBe('Erro ao importar');
+  });
+
+  it('inclui um requestId rastreável', async () => {
+    const body = await errorResponse(new Error('x'), 'Erro').json();
+    expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('mapeia DriveAuthError para 401', () => {
+    expect(errorResponse(new DriveAuthError(), 'Erro').status).toBe(401);
+  });
+
+  it('usa 500 para erro desconhecido', () => {
+    expect(errorResponse(new Error('x'), 'Erro').status).toBe(500);
+  });
+
+  it('loga o erro completo no servidor', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    errorResponse(new Error('detalhe secreto'), 'Erro');
+    expect(spy.mock.calls[0].join(' ')).toContain('detalhe secreto');
+    spy.mockRestore();
+  });
+});

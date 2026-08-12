@@ -12,7 +12,12 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...compat.extends('next/core-web-vitals'),
   {
-    ignores: ['.next/**', 'node_modules/**', 'lib/db/migrations/**'],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'lib/db/migrations/**',
+      'next-env.d.ts',
+    ],
   },
   {
     rules: {
