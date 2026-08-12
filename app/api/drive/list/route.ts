@@ -1,11 +1,16 @@
-import { auth } from '@/lib/auth';
+import { getDriveToken, DriveAuthError } from '@/lib/auth';
 import { fetchDriveFiles } from '@/lib/drive';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.accessToken)
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  let accessToken: string;
+  try {
+    accessToken = await getDriveToken();
+  } catch (err) {
+    if (err instanceof DriveAuthError)
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    throw err;
+  }
 
   const { searchParams } = new URL(req.url);
   const folderId = searchParams.get('folderId');
@@ -13,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'folderId é obrigatório' }, { status: 400 });
 
   try {
-    const result = await fetchDriveFiles(session.accessToken, folderId);
+    const result = await fetchDriveFiles(accessToken, folderId);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

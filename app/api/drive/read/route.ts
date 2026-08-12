@@ -1,13 +1,18 @@
-import { auth } from '@/lib/auth';
+import { getDriveToken, DriveAuthError } from '@/lib/auth';
 import { db } from '@/lib/db/drizzle';
 import { driveFiles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.accessToken)
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  let accessToken: string;
+  try {
+    accessToken = await getDriveToken();
+  } catch (err) {
+    if (err instanceof DriveAuthError)
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    throw err;
+  }
 
   const { searchParams } = new URL(req.url);
   const bookId = searchParams.get('bookId');
@@ -30,7 +35,7 @@ export async function GET(req: Request) {
 
   try {
     const driveRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${session.accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!driveRes.ok)

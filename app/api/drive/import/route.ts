@@ -1,22 +1,26 @@
-import { auth } from '@/lib/auth';
+import { getDriveToken, getCurrentUserId, DriveAuthError } from '@/lib/auth';
 import { fetchFileBuffer, getDriveDownloadUrl } from '@/lib/drive';
 import { parseEpubMetadata, extractCoverFromEpub } from '@/lib/ebook';
 import { db } from '@/lib/db/drizzle';
 import { books, authors, bookToAuthor, driveFiles } from '@/lib/db/schema';
-import { getOrCreateAppUserId } from '@/lib/db/users';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.accessToken || !session?.user?.email)
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  let accessToken: string;
+  let userId: string;
+  try {
+    accessToken = await getDriveToken();
+    userId = await getCurrentUserId();
+  } catch (err) {
+    if (err instanceof DriveAuthError)
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    throw err;
+  }
 
   const { fileId, fileName, mimeType } = await req.json();
   if (!fileId || !mimeType)
     return NextResponse.json({ error: 'fileId e mimeType obrigatórios' }, { status: 400 });
-
-  const userId = await getOrCreateAppUserId(session.user.email);
 
   // Verifica se já foi importado
   const existing = await db
@@ -30,7 +34,7 @@ export async function POST(req: Request) {
 
   try {
     if (mimeType === 'application/epub+zip') {
-      const buffer = await fetchFileBuffer(session.accessToken, fileId);
+      const buffer = await fetchFileBuffer(accessToken, fileId);
       const meta = parseEpubMetadata(buffer);
 
       // Insere o livro
