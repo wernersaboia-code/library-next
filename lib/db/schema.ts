@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
   pgTable, serial, text, integer, timestamp, decimal,
-  primaryKey, index, uuid, jsonb, numeric, customType,
+  primaryKey, index, uuid, jsonb, numeric, customType, unique,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -121,18 +121,25 @@ export const driveSettings = pgTable('drive_settings', {
     .defaultNow().notNull(),
 });
 
-export const readingProgress = pgTable('reading_progress', {
-  id: serial('id').primaryKey(),
-  userId: uuid('user_id').notNull()
-    .references(() => appUsers.id, { onDelete: 'cascade' }),
-  bookId: integer('book_id').notNull()
-    .references(() => books.id, { onDelete: 'cascade' }),
-  locator: jsonb('locator').default({}).notNull(),
-  percentage: numeric('percentage', { precision: 5, scale: 4 }),
-  secondsRead: integer('seconds_read').default(0).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .defaultNow().notNull(),
-});
+export const readingProgress = pgTable(
+  'reading_progress',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id').notNull()
+      .references(() => appUsers.id, { onDelete: 'cascade' }),
+    bookId: integer('book_id').notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    locator: jsonb('locator').default({}).notNull(),
+    percentage: numeric('percentage', { precision: 5, scale: 4 }),
+    secondsRead: integer('seconds_read').default(0).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow().notNull(),
+  },
+  (t) => ({
+    userBookUnique: unique('reading_progress_user_book_unique')
+      .on(t.userId, t.bookId),
+  })
+);
 
 export const readingSessions = pgTable('reading_sessions', {
   id: serial('id').primaryKey(),

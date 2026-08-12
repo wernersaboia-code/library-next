@@ -41,24 +41,13 @@ export async function POST(req: Request) {
   const userId = await getOrCreateAppUserId(session.user.email);
   const locator = cfi ? { kind: 'epub' as const, cfi } : {};
 
-  const existing = await db
-    .select({ id: readingProgress.id })
-    .from(readingProgress)
-    .where(
-      and(eq(readingProgress.userId, userId), eq(readingProgress.bookId, bookId))
-    )
-    .limit(1);
-
-  if (existing[0]) {
-    await db
-      .update(readingProgress)
-      .set({ locator, percentage: String(percentage), updatedAt: sql`now()` })
-      .where(eq(readingProgress.id, existing[0].id));
-  } else {
-    await db
-      .insert(readingProgress)
-      .values({ userId, bookId, locator, percentage: String(percentage) });
-  }
+  await db
+    .insert(readingProgress)
+    .values({ userId, bookId, locator, percentage: String(percentage) })
+    .onConflictDoUpdate({
+      target: [readingProgress.userId, readingProgress.bookId],
+      set: { locator, percentage: String(percentage), updatedAt: sql`now()` },
+    });
 
   return NextResponse.json({ success: true });
 }

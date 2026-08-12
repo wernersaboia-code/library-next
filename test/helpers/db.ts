@@ -52,6 +52,22 @@ export async function createTestDb() {
   };
 }
 
+// ATENÇÃO (contrato deste reescritor, ler antes de adicionar migrations):
+// A substituição abaixo é deliberadamente literal e cega: ela troca apenas
+// a sequência exata `"public".` (aspas duplas + ponto) — o formato que o
+// drizzle-kit usa para qualificar FKs entre tabelas nas migrations 0000 a
+// 0006. Ela NÃO entende SQL e NÃO diferencia identificador de literal.
+//
+// Migrations futuras (ex.: Task 4, RLS) que precisem referenciar o schema
+// `public` NÃO DEVEM depender deste reescritor. Em particular:
+//   - `public.tabela` sem aspas não é substituído (fica apontando pro
+//     `public` real, quebrando o isolamento por schema do teste);
+//   - a palavra `public` dentro de uma string literal (ex.:
+//     `CREATE POLICY ... USING (schema = 'public')`) seria corrompida se
+//     algum dia a substituição for generalizada para `public.` sem aspas.
+// Objetos criados por `CREATE POLICY`, funções, triggers, etc. devem
+// qualificar-se via `search_path` (que já está preso ao schema da suíte,
+// veja `createTestDb` acima) em vez de prefixo literal de schema.
 async function applyMigrations(sql: postgres.Sql, schemaName: string) {
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
@@ -59,6 +75,9 @@ async function applyMigrations(sql: postgres.Sql, schemaName: string) {
 
   for (const file of files) {
     const raw = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+    // Contrato: substitui apenas `"public".` literal (aspas + ponto).
+    // Não generalizar para `public.` sem aspas nem para a palavra
+    // "public" isolada — ver aviso acima.
     const rewritten = raw.replaceAll('"public".', `"${schemaName}".`);
     const statements = rewritten
       .split('--> statement-breakpoint')

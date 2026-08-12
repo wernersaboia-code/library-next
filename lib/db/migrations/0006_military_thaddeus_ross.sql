@@ -170,4 +170,5 @@ CREATE INDEX IF NOT EXISTS "idx_drive_files_user_book" ON "drive_files" USING bt
 CREATE INDEX IF NOT EXISTS "idx_drive_files_user_file" ON "drive_files" USING btree ("user_id","file_id");--> statement-breakpoint
 ALTER TABLE "drive_files" DROP COLUMN IF EXISTS "size";--> statement-breakpoint
 ALTER TABLE "reading_progress" DROP COLUMN IF EXISTS "cfi";--> statement-breakpoint
-ALTER TABLE "reading_progress" DROP COLUMN IF EXISTS "minutes_read";
+ALTER TABLE "reading_progress" DROP COLUMN IF EXISTS "minutes_read";--> statement-breakpoint
+ALTER TABLE "reading_progress" ADD CONSTRAINT "reading_progress_user_book_unique" UNIQUE("user_id","book_id");

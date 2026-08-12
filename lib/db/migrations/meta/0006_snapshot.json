@@ -975,7 +975,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "reading_progress_user_book_unique": {
+          "name": "reading_progress_user_book_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "book_id"
+          ]
+        }
+      }
     },
     "public.reading_sessions": {
       "name": "reading_sessions",

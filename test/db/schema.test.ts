@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createTestDb } from '../helpers/db';
+import { readingProgress } from '@/lib/db/schema';
+import { sql as drizzleSql } from 'drizzle-orm';
 
 let ctx: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -64,5 +66,50 @@ describe('schema', () => {
     // deixaram highlights de outros livros na tabela.
     const rows = await ctx.sql`select id from highlights where book_id = ${b.id}`;
     expect(rows).toHaveLength(0);
+  });
+
+  it('rejeita duas linhas de reading_progress para o mesmo user_id+book_id', async () => {
+    const [u] = await ctx.sql`
+      insert into app_users (email) values ('rp1@b.com') returning id`;
+    const [b] = await ctx.sql`
+      insert into books (user_id, title, title_source)
+      values (${u.id}, 'L', 'L') returning id`;
+
+    await ctx.sql`
+      insert into reading_progress (user_id, book_id) values (${u.id}, ${b.id})`;
+
+    await expect(
+      ctx.sql`
+        insert into reading_progress (user_id, book_id) values (${u.id}, ${b.id})`
+    ).rejects.toThrow(/duplicate key|unique/i);
+  });
+
+  it('onConflictDoUpdate sobre (user_id, book_id) resulta em uma única linha', async () => {
+    const [u] = await ctx.sql`
+      insert into app_users (email) values ('rp2@b.com') returning id`;
+    const [b] = await ctx.sql`
+      insert into books (user_id, title, title_source)
+      values (${u.id}, 'L', 'L') returning id`;
+
+    const upsert = () =>
+      ctx.db
+        .insert(readingProgress)
+        .values({ userId: u.id, bookId: b.id, secondsRead: 10 })
+        .onConflictDoUpdate({
+          target: [readingProgress.userId, readingProgress.bookId],
+          set: {
+            secondsRead: drizzleSql`${readingProgress.secondsRead} + 10`,
+            updatedAt: drizzleSql`now()`,
+          },
+        });
+
+    await upsert();
+    await upsert();
+
+    const rows = await ctx.sql`
+      select seconds_read from reading_progress
+      where user_id = ${u.id} and book_id = ${b.id}`;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].seconds_read).toBe(20);
   });
 });
