@@ -1,8 +1,10 @@
 export default {
   images: {
-    localPatterns: [
+    remotePatterns: [
       {
-        pathname: '/api/cover/**',
+        protocol: 'https' as const,
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/covers/**',
       },
     ],
   },

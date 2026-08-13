@@ -44,7 +44,7 @@ function BookLink({
     return null;
   }
 
-  let noFilters = Object.values(searchParams).every((v) => v === undefined);
+  const noFilters = Object.values(searchParams).every((v) => v === undefined);
 
   return (
     <Link
@@ -54,9 +54,9 @@ function BookLink({
       prefetch={noFilters ? true : null}
     >
       <Photo
-        src={book.image_url!}
+        src={book.image_url}
         title={book.title}
-        thumbhash={book.thumbhash!}
+        thumbhash={book.thumbhash}
         priority={priority}
       />
     </Link>

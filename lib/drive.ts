@@ -42,6 +42,20 @@ export async function fetchDriveFiles(
   return res.json();
 }
 
+export async function fetchAllDriveFiles(
+  accessToken: string,
+  folderId: string
+): Promise<DriveFile[]> {
+  const todos: DriveFile[] = [];
+  let pageToken: string | undefined;
+  do {
+    const r = await fetchDriveFiles(accessToken, folderId, pageToken);
+    todos.push(...r.files);
+    pageToken = r.nextPageToken;
+  } while (pageToken);
+  return todos;
+}
+
 export async function fetchDriveFolders(
   accessToken: string
 ): Promise<DriveFolder[]> {
@@ -66,6 +80,19 @@ export async function fetchDriveFolders(
 
 export function getDriveDownloadUrl(fileId: string): string {
   return `${DRIVE_FILES_URL}/${fileId}?alt=media`;
+}
+
+export async function fetchDriveFileStream(
+  accessToken: string,
+  fileId: string,
+  range?: string | null
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+  if (range) headers.Range = range;
+
+  return fetch(getDriveDownloadUrl(fileId), { headers });
 }
 
 export async function fetchFileBuffer(

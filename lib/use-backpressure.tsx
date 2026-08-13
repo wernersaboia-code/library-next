@@ -23,11 +23,11 @@ import { useRouter } from 'next/navigation';
  * show a loading spinner or skeleton UI.
  */
 export function useBackpressure(delay: number = 300) {
-  let router = useRouter();
-  let isUpdatingRef = useRef(false);
-  let updateCountRef = useRef(0);
-  let latestUrlRef = useRef('');
-  let formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const isUpdatingRef = useRef(false);
+  const updateCountRef = useRef(0);
+  const latestUrlRef = useRef('');
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function triggerUpdate(newUrl: string) {
     updateCountRef.current++;
@@ -35,7 +35,7 @@ export function useBackpressure(delay: number = 300) {
 
     if (!isUpdatingRef.current) {
       isUpdatingRef.current = true;
-      let currentUpdateCount = updateCountRef.current;
+      const currentUpdateCount = updateCountRef.current;
 
       router.replace(newUrl);
 
@@ -51,7 +51,7 @@ export function useBackpressure(delay: number = 300) {
     }
   }
 
-  let shouldSuspend = updateCountRef.current > 0 && !isUpdatingRef.current;
+  const shouldSuspend = updateCountRef.current > 0 && !isUpdatingRef.current;
 
   return { triggerUpdate, shouldSuspend, formRef };
 }

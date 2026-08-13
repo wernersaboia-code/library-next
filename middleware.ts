@@ -3,8 +3,12 @@ import { NextResponse } from 'next/server';
 
 export default auth((req) => {
   if (!req.auth) {
-    const loginUrl = new URL('/login', req.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
+  if (req.auth.error === 'RefreshFailed') {
+    const url = new URL('/login', req.url);
+    url.searchParams.set('erro', 'drive');
+    return NextResponse.redirect(url);
   }
 });
 

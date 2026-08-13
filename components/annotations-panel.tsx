@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { X, Bookmark, Highlighter, StickyNote } from 'lucide-react';
 
 interface Annotation {
-  id: number;
+  id: string;
   bookId: number;
   type: 'highlight' | 'bookmark' | 'note';
   cfi: string | null;
@@ -31,7 +31,7 @@ export default function AnnotationsPanel({ bookId, onJumpTo }: Props) {
       .then(setItems);
   }, [bookId, open]);
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     await fetch('/api/reading/annotations', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },

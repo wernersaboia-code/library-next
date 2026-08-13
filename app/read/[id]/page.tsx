@@ -29,7 +29,8 @@ export default function ReaderPage() {
   }, []);
 
   useEffect(() => {
-    if (!viewerRef.current) return;
+    const viewerEl = viewerRef.current;
+    if (!viewerEl) return;
 
     const book = ePub(`/api/drive/read?bookId=${bookId}`);
 
@@ -37,7 +38,7 @@ export default function ReaderPage() {
       setTitle(meta.title || '');
     });
 
-    const rendition = book.renderTo(viewerRef.current!, {
+    const rendition = book.renderTo(viewerEl, {
       width: '100%',
       height: '100%',
       spread: 'none',
@@ -61,7 +62,9 @@ export default function ReaderPage() {
                 fill: a.color || '#ffff00',
                 'fill-opacity': '0.3',
               });
-            } catch {}
+            } catch {
+              // anotação inválida/duplicada: ignora e segue renderizando
+            }
           }
         });
       });
@@ -155,8 +158,12 @@ export default function ReaderPage() {
           fill: '#ffff00',
           'fill-opacity': '0.3',
         });
-      } catch {}
-    } catch {}
+      } catch {
+        // destaque visual é best-effort; ignora falha de render
+      }
+    } catch {
+      // seleção indisponível: nada a destacar
+    }
 
     setTranslateText('');
   };

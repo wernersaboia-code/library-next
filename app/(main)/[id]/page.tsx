@@ -14,6 +14,8 @@ import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 import { db } from '@/lib/db/drizzle';
 import { driveFiles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getCurrentUserId } from '@/lib/auth';
+import { notFound } from 'next/navigation';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -40,7 +42,9 @@ export default async function Page(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const book = await fetchBookById(params.id);
+  const userId = await getCurrentUserId();
+  const book = await fetchBookById(userId, params.id);
+  if (!book) notFound();
 
   const driveFile = await db
     .select({ fileId: driveFiles.fileId, mimeType: driveFiles.mimeType })
@@ -75,9 +79,9 @@ export default async function Page(
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-1/2 md:w-1/4 mx-auto md:mx-0">
           <Photo
-            src={book.image_url!}
+            src={book.image_url}
             title={book.title}
-            thumbhash={book.thumbhash!}
+            thumbhash={book.thumbhash}
             priority={true}
           />
         </div>

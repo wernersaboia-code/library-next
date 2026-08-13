@@ -1,19 +1,14 @@
-import { auth } from '@/lib/auth';
+import { getDriveToken } from '@/lib/auth';
 import { fetchDriveFolders } from '@/lib/drive';
+import { errorResponse } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.accessToken)
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
-
   try {
-    const folders = await fetchDriveFolders(session.accessToken);
+    const accessToken = await getDriveToken();
+    const folders = await fetchDriveFolders(accessToken);
     return NextResponse.json(folders);
   } catch (err) {
-    return NextResponse.json(
-      { error: 'Erro ao listar pastas', details: String(err) },
-      { status: 500 }
-    );
+    return errorResponse(err, 'Erro ao listar pastas');
   }
 }

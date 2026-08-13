@@ -17,7 +17,7 @@ function FormValues({
   searchParams: SearchParams;
   pageNumber: number;
 }) {
-  let { pending } = useFormStatus();
+  const { pending } = useFormStatus();
 
   return (
     <div data-pending={pending ? '' : undefined}>

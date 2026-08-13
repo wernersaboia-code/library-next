@@ -13,6 +13,7 @@ interface DriveFile {
   id: string;
   name: string;
   mimeType: string;
+  size?: string;
 }
 
 export default function SettingsPage() {
@@ -55,6 +56,7 @@ export default function SettingsPage() {
           fileId: file.id,
           fileName: file.name,
           mimeType: file.mimeType,
+          size: file.size,
         }),
       });
       const data = await res.json();

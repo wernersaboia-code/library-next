@@ -1,7 +1,9 @@
 import { auth, signIn } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
-export default async function LoginPage() {
+export default async function LoginPage(props: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const session = await auth();
   if (session?.user) redirect('/');
 
@@ -12,6 +14,12 @@ export default async function LoginPage() {
         <p className="mb-8 text-center text-gray-500">
           Faça login com sua conta Google para acessar sua biblioteca.
         </p>
+        {(await props.searchParams)?.erro === 'drive' && (
+          <p className="mb-4 rounded bg-amber-50 p-3 text-sm text-amber-900">
+            O acesso ao seu Google Drive expirou. Entre novamente para
+            reautorizar.
+          </p>
+        )}
         <form
           action={async () => {
             'use server';

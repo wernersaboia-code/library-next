@@ -1,8 +1,8 @@
 // lib/db/queries.ts
 import { sql, and, gte, eq, lte, not, isNull, like } from 'drizzle-orm';
-import { db } from './drizzle';
 import { books, authors, bookToAuthor } from './schema';
 import { SearchParams } from '@/lib/url-state';
+import { withUser } from './with-user';
 
 export const ITEMS_PER_PAGE = 28;
 export const EMPTY_IMAGE_URL = '';
@@ -43,14 +43,22 @@ const pageFilter = (pgs?: string) => {
 };
 
 const searchFilter = (q?: string) => {
-    if (q) {
-        const tsQuery = q.trim().split(/\s+/).join(' & ');
-        return sql`${books.title_tsv} @@ to_tsquery('english', ${tsQuery})`;
-    }
-    return undefined;
+    const termo = q?.trim();
+    if (!termo) return undefined;
+    // websearch_to_tsquery nunca lança: trata aspas, apóstrofo e operadores
+    // soltos (& | !) sem derrubar a query — ao contrário de to_tsquery.
+    // 'portuguese' casa com o dicionário da coluna gerada title_tsv, o que
+    // permite o planner usar o índice GIN (idx_books_title_tsv).
+    return sql`${books.title_tsv} @@ websearch_to_tsquery('portuguese', ${termo})`;
 };
 
-const imageFilter = () => {
+// Existia para esconder livros sem capa importados do Calibre. Livros
+// importados do Drive não têm capa até o upload assíncrono terminar — com o
+// filtro ligado por padrão eles ficariam invisíveis nesse meio-tempo. Por
+// isso o default é NÃO filtrar; passe `true` para restaurar o comportamento
+// antigo explicitamente.
+const imageFilter = (enabled?: boolean) => {
+    if (!enabled) return undefined;
     return and(
         not(isNull(books.image_url)),
         sql`${books.image_url} != ${EMPTY_IMAGE_URL}`
@@ -90,9 +98,9 @@ const publisherFilter = (pub?: string) => {
 
 // — Helpers —
 
-function buildFilters(searchParams: SearchParams) {
+function buildFilters(searchParams: SearchParams, requireImage = false) {
     return [
-        imageFilter(),
+        imageFilter(requireImage),
         yearFilter(searchParams.yr),
         ratingFilter(searchParams.rtg),
         languageFilter(searchParams.lng),
@@ -108,93 +116,114 @@ function buildFilters(searchParams: SearchParams) {
 
 // — Queries públicas —
 
-export async function fetchBooksWithPagination(searchParams: SearchParams) {
+export async function fetchBooksWithPagination(
+    userId: string,
+    searchParams: SearchParams
+) {
     const requestedPage = Math.max(1, Number(searchParams?.page) || 1);
     const filters = buildFilters(searchParams);
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
     const offset = (requestedPage - 1) * ITEMS_PER_PAGE;
 
-    return db
-        .select({
-            id: books.id,
-            title: books.title,
-            image_url: books.image_url,
-            thumbhash: books.thumbhash,
-        })
-        .from(books)
-        .where(whereClause)
-        .orderBy(books.id)
-        .limit(ITEMS_PER_PAGE)
-        .offset(offset);
+    return withUser(userId, (tx) =>
+        tx
+            .select({
+                id: books.id,
+                title: books.title,
+                image_url: books.image_url,
+                thumbhash: books.thumbhash,
+            })
+            .from(books)
+            .where(whereClause)
+            .orderBy(books.id)
+            .limit(ITEMS_PER_PAGE)
+            .offset(offset)
+    );
 }
 
-export async function estimateTotalBooks(searchParams: SearchParams) {
+export async function estimateTotalBooks(
+    userId: string,
+    searchParams: SearchParams
+) {
     const filters = buildFilters(searchParams);
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const explainResult = await db.execute(sql`
-    EXPLAIN (FORMAT JSON)
-    SELECT id FROM books
-    ${whereClause ? sql`WHERE ${whereClause}` : sql``}
-  `);
+    return withUser(userId, async (tx) => {
+        const explainResult = await tx.execute(sql`
+      EXPLAIN (FORMAT JSON)
+      SELECT id FROM books
+      ${whereClause ? sql`WHERE ${whereClause}` : sql``}
+    `);
 
-    const planRows = (explainResult.rows[0] as any)['QUERY PLAN'][0]['Plan'][
-        'Plan Rows'
-        ];
-    return planRows;
+        // postgres-js devolve o resultado do EXPLAIN como array direto de
+        // linhas (não `{ rows: [...] }`) — mesmo padrão já usado na Task 2.
+        const rows = explainResult as unknown as { 'QUERY PLAN': unknown }[];
+        const plan = rows[0]?.['QUERY PLAN'] as
+            | [{ Plan?: { 'Plan Rows'?: number } }]
+            | undefined;
+        return plan?.[0]?.Plan?.['Plan Rows'] ?? 0;
+    });
 }
 
-export async function fetchBookById(id: string) {
-    const result = await db
-        .select({
-            id: books.id,
-            isbn: books.isbn,
-            isbn13: books.isbn13,
-            title: books.title,
-            publication_year: books.publication_year,
-            publisher: books.publisher,
-            series: books.series,
-            image_url: books.image_url,
-            description: books.description,
-            num_pages: books.num_pages,
-            language_code: books.language_code,
-            text_reviews_count: books.text_reviews_count,
-            ratings_count: books.ratings_count,
-            average_rating: books.average_rating,
-            genre: books.genre,
-            read_status: books.read_status,
-            createdAt: books.createdAt,
-            authors: sql<string[]>`array_agg(${authors.name})`,
-            thumbhash: books.thumbhash,
-        })
-        .from(books)
-        .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
-        .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-        .where(eq(books.id, parseInt(id)))
-        .groupBy(books.id)
-        .limit(1);
+export async function fetchBookById(userId: string, id: string) {
+    const result = await withUser(userId, (tx) =>
+        tx
+            .select({
+                id: books.id,
+                isbn: books.isbn,
+                isbn13: books.isbn13,
+                title: books.title,
+                publication_year: books.publication_year,
+                publisher: books.publisher,
+                series: books.series,
+                image_url: books.image_url,
+                description: books.description,
+                num_pages: books.num_pages,
+                language_code: books.language_code,
+                text_reviews_count: books.text_reviews_count,
+                ratings_count: books.ratings_count,
+                average_rating: books.average_rating,
+                genre: books.genre,
+                read_status: books.read_status,
+                createdAt: books.createdAt,
+                authors: sql<string[]>`array_agg(${authors.name})`,
+                thumbhash: books.thumbhash,
+            })
+            .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
+            .where(eq(books.id, parseInt(id)))
+            .groupBy(books.id)
+            .limit(1)
+    );
 
     return result[0];
 }
 
 // — Queries auxiliares para popular filtros dinamicamente —
 
-export async function fetchDistinctGenres(): Promise<string[]> {
-    const result = await db
-        .selectDistinct({ genre: books.genre })
-        .from(books)
-        .where(not(isNull(books.genre)))
-        .orderBy(books.genre);
+export async function fetchDistinctGenres(userId: string): Promise<string[]> {
+    const result = await withUser(userId, (tx) =>
+        tx
+            .selectDistinct({ genre: books.genre })
+            .from(books)
+            .where(not(isNull(books.genre)))
+            .orderBy(books.genre)
+    );
 
     return result.map((r) => r.genre).filter(Boolean) as string[];
 }
 
-export async function fetchDistinctPublishers(): Promise<string[]> {
-    const result = await db
-        .selectDistinct({ publisher: books.publisher })
-        .from(books)
-        .where(not(isNull(books.publisher)))
-        .orderBy(books.publisher);
+export async function fetchDistinctPublishers(
+    userId: string
+): Promise<string[]> {
+    const result = await withUser(userId, (tx) =>
+        tx
+            .selectDistinct({ publisher: books.publisher })
+            .from(books)
+            .where(not(isNull(books.publisher)))
+            .orderBy(books.publisher)
+    );
 
     return result.map((r) => r.publisher).filter(Boolean) as string[];
 }
