@@ -1,6 +1,9 @@
 // lib/db/import-calibre.ts
+// Carrega o .env antes de `./drizzle` (que lê POSTGRES_URL no import).
+// Como efeito de import, roda na ordem dos imports — diferente de um
+// `dotenv.config()` statement, que rodaria depois de todos os imports.
+import 'dotenv/config';
 import initSqlJs from 'sql.js';
-import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
@@ -17,8 +20,6 @@ import { withUser } from './with-user';
 // Node resolver `server-only` para o stub vazio em vez do throw.
 import { authorId } from '@/lib/authors';
 import { uploadCover } from '@/lib/storage';
-
-dotenv.config();
 
 // ─── Configuração ─────────────────────────────────────────────
 const CALIBRE_PATH = 'C:\\Livros\\Calibre Portable\\Calibre Library';
