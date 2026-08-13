@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthError } from '@/lib/auth-user';
+import { AuthError } from '@/lib/auth-error';
 
 // Prova que a rota de stats passa por withUser (logo, sob RLS escopado
 // por usuário) em vez de bater no db singleton sem app.user_id definido.
@@ -7,10 +7,15 @@ import { AuthError } from '@/lib/auth-user';
 const withUserMock = vi.fn();
 const getCurrentUserIdMock = vi.fn(async () => 'u-1');
 
-vi.mock('@/lib/auth-user', () => ({
-  getCurrentUserId: () => getCurrentUserIdMock(),
-  AuthError: class AuthError extends Error {},
-}));
+// Reusa o AuthError REAL (módulo leve, sem drizzle) para que o
+// `instanceof AuthError` dentro de errorResponse case e o erro vire 401.
+vi.mock('@/lib/auth-user', async () => {
+  const { AuthError } = await import('@/lib/auth-error');
+  return {
+    getCurrentUserId: () => getCurrentUserIdMock(),
+    AuthError,
+  };
+});
 
 vi.mock('@/lib/db/with-user', () => ({
   withUser: (uid: string, fn: unknown) => withUserMock(uid, fn),
