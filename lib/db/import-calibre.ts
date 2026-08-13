@@ -22,7 +22,16 @@ import { authorId } from '@/lib/authors';
 import { uploadCover } from '@/lib/storage';
 
 // ─── Configuração ─────────────────────────────────────────────
-const CALIBRE_PATH = 'C:\\Livros\\Calibre Portable\\Calibre Library';
+// Caminho da biblioteca Calibre: --path=... na linha de comando, ou a env
+// CALIBRE_PATH, ou o default. Ex.: pnpm db:import-calibre --email=... --path="G:\Meu Drive\Livros"
+function argValue(prefix: string): string | undefined {
+    const a = process.argv.find((x) => x.startsWith(prefix));
+    return a ? a.slice(prefix.length) : undefined;
+}
+const CALIBRE_PATH =
+    argValue('--path=') ??
+    process.env.CALIBRE_PATH ??
+    'C:\\Livros\\Calibre Portable\\Calibre Library';
 const CALIBRE_DB   = path.join(CALIBRE_PATH, 'metadata.db');
 
 // ─── Usuário dono da importação ───────────────────────────────
