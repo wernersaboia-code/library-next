@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { createTestDb } from '../helpers/db';
 import type { CalibreBookInput } from '@/lib/db/calibre-sync';
 
@@ -80,12 +83,69 @@ describe('sync do Calibre', () => {
   });
 
   it('pula livro inalterado sem re-subir capa', async () => {
+    // Capa real no disco (conteúdo não precisa ser um JPEG válido: só o
+    // fs.existsSync/readFileSync importam aqui) para que syncCover tenha
+    // sucesso e o watermark avance no primeiro sync.
+    const calibrePath = fs.mkdtempSync(path.join(os.tmpdir(), 'calibre-'));
+    const bookDir = path.join(calibrePath, 'Autor A', 'Original (1)');
+    fs.mkdirSync(bookDir, { recursive: true });
+    fs.writeFileSync(path.join(bookDir, 'cover.jpg'), Buffer.from('fake-cover'));
+
     const { uploadCover } = await import('@/lib/storage');
     const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
-    await syncCalibreBooks(userId, [livro({ uuid: 'u-4', hasCover: true })], '');
+    await syncCalibreBooks(userId, [livro({ uuid: 'u-4', hasCover: true })], calibrePath);
     vi.mocked(uploadCover).mockClear();
-    const r = await syncCalibreBooks(userId, [livro({ uuid: 'u-4', hasCover: true })], '');
+    const r = await syncCalibreBooks(
+      userId, [livro({ uuid: 'u-4', hasCover: true })], calibrePath
+    );
     expect(uploadCover).not.toHaveBeenCalled();
     expect(r.pulados).toBe(1);
+  });
+
+  it('livro do Calibre que reaparece volta a owned=true, sem tocar em manual', async () => {
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+
+    // u-5 entra, depois some da biblioteca -> owned=false.
+    await syncCalibreBooks(userId, [livro({ uuid: 'u-5' })], '');
+    await syncCalibreBooks(userId, [], '');
+    const [antes] = await ctx.sql`select owned from books where calibre_uuid = 'u-5'`;
+    expect(antes.owned).toBe(false);
+
+    const [manual] = await ctx.sql`
+      insert into books (user_id, title, title_source, source, owned)
+      values (${userId}, 'Manual owned=false', 'Manual owned=false', 'manual', false)
+      returning id`;
+
+    // u-5 volta a aparecer na biblioteca.
+    await syncCalibreBooks(userId, [livro({ uuid: 'u-5' })], '');
+
+    const [depois] = await ctx.sql`select owned from books where calibre_uuid = 'u-5'`;
+    expect(depois.owned).toBe(true);
+
+    const [manualDepois] = await ctx.sql`select owned from books where id = ${manual.id}`;
+    expect(manualDepois.owned).toBe(false); // ramo de owned=true não atinge manuais
+  });
+
+  it('capa que falha não avança o watermark — próximo run reprocessa', async () => {
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+
+    // calibrePath='' garante que o arquivo de capa não existe no disco,
+    // então syncCover falha (sem cover.jpg) e não deve gravar calibre_modified.
+    const r1 = await syncCalibreBooks(
+      userId, [livro({ uuid: 'u-6', hasCover: true })], ''
+    );
+    expect(r1.novos).toBe(1);
+
+    const [b] = await ctx.sql`
+      select calibre_modified from books where calibre_uuid = 'u-6'`;
+    expect(b.calibre_modified).toBeNull();
+
+    // Próximo run: como o watermark não avançou, o livro é reprocessado
+    // (não é `skip`).
+    const r2 = await syncCalibreBooks(
+      userId, [livro({ uuid: 'u-6', hasCover: true })], ''
+    );
+    expect(r2.pulados).toBe(0);
+    expect(r2.atualizados).toBe(1);
   });
 });

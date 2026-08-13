@@ -96,9 +96,13 @@ export async function readCalibreLibrary(
         );
 
         const livros: CalibreBookInput[] = [];
+        const semUuid: string[] = [];
 
         for (const book of rows) {
-            if (!book.uuid) continue;
+            if (!book.uuid) {
+                semUuid.push(book.title);
+                continue;
+            }
 
             const autores = query<CalibreAuthor>(
                 calibre,
@@ -204,6 +208,18 @@ export async function readCalibreLibrary(
                 hasCover: Boolean(book.has_cover),
                 path: book.path,
             });
+        }
+
+        if (semUuid.length > 0) {
+            const titulos = semUuid.slice(0, 10);
+            const resto = semUuid.length > titulos.length
+                ? ` (+${semUuid.length - titulos.length})`
+                : '';
+            console.warn(
+                `[calibre] ${semUuid.length} livro(s) sem uuid ignorado(s)`,
+                titulos,
+                resto
+            );
         }
 
         return livros;

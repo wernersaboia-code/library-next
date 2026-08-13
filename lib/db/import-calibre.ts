@@ -7,7 +7,6 @@ import path from 'path';
 import sharp from 'sharp';
 import * as ThumbHash from 'thumbhash';
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
-import type { PgUpdateSetSource } from 'drizzle-orm/pg-core';
 import { pathToFileURL } from 'node:url';
 import { client, db } from './drizzle';
 import { books, authors, bookToAuthor, appUsers } from './schema';
@@ -16,6 +15,7 @@ import {
     decideSync,
     metadataValues,
     type CalibreBookInput,
+    type CatalogMetadata,
     type ExistingBook,
 } from './calibre-sync';
 import { readCalibreLibrary, readCoverBuffer } from './calibre-reader';
@@ -95,14 +95,25 @@ export interface SyncSummary {
     erros: number;
 }
 
-// `metadataValues` devolve um `Record<string, unknown>` de propósito: ele é
-// a única fonte do que o sync escreve de metadado, e não conhece o schema do
-// Drizzle. Estes dois aliases levam esse record aos tipos do Drizzle SEM
-// permitir acrescentar campo nenhum no caminho — o `set` do update é
-// literalmente o retorno da função, e por isso é impossível o sync escrever
-// tracking (read_status, my_rating, datas) por engano.
-type BookInsert = typeof books.$inferInsert;
-type BookUpdateSet = PgUpdateSetSource<typeof books>;
+/**
+ * Metadado de catálogo sem o watermark `calibre_modified`. Usado na escrita
+ * inicial (insert/update) do livro: o watermark só avança depois que a capa
+ * for resolvida com sucesso (ver `syncCover` e o chamador em
+ * `syncCalibreBooks`) — assim, uma capa que falha faz o próximo run
+ * reprocessar o livro em vez de ficar sem capa para sempre.
+ */
+type CatalogWithoutWatermark = Omit<CatalogMetadata, 'calibre_modified'>;
+
+function semWatermark(meta: CatalogMetadata): CatalogWithoutWatermark {
+    const {
+        title, title_source, isbn, isbn13, publication_year, publisher,
+        series, language_code, description, genre, num_pages, average_rating,
+    } = meta;
+    return {
+        title, title_source, isbn, isbn13, publication_year, publisher,
+        series, language_code, description, genre, num_pages, average_rating,
+    };
+}
 
 /** Garante as linhas de `authors` (tabela global, sem RLS) e devolve os ids. */
 async function ensureAuthors(nomes: string[]): Promise<string[]> {
@@ -119,14 +130,19 @@ async function ensureAuthors(nomes: string[]): Promise<string[]> {
  * Sobe a capa do livro e grava `image_url`/`thumbhash`. Falha de leitura,
  * de imagem ou de Storage vira aviso e segue: o livro já está persistido, e
  * uma capa ausente não pode derrubar o sync inteiro.
+ *
+ * Devolve `true` quando não há nada pendente (sem capa, ou capa subiu com
+ * sucesso) e `false` quando a capa deveria existir mas não pôde ser
+ * sincronizada — o chamador usa esse booleano para decidir se o watermark
+ * `calibre_modified` pode avançar (ver `syncCalibreBooks`).
  */
 async function syncCover(
     userId: string,
     bookId: number,
     livro: CalibreBookInput,
     calibrePath: string
-): Promise<void> {
-    if (!livro.hasCover) return;
+): Promise<boolean> {
+    if (!livro.hasCover) return true;
     try {
         const buf = readCoverBuffer(calibrePath, livro.path);
         if (!buf) {
@@ -135,7 +151,7 @@ async function syncCover(
                 titulo: livro.title,
                 caminho: path.join(calibrePath, livro.path, 'cover.jpg'),
             });
-            return;
+            return false;
         }
         const thumbhash = await generateThumbHash(buf);
         const imageUrl = await uploadCover(userId, bookId, buf, 'jpg');
@@ -145,12 +161,14 @@ async function syncCover(
                 .set({ image_url: imageUrl, thumbhash })
                 .where(and(eq(books.id, bookId), eq(books.source, 'calibre')))
         );
+        return true;
     } catch (error) {
         console.warn('[sync] falha ao sincronizar capa', {
             uuid: livro.uuid,
             titulo: livro.title,
             erro: error instanceof Error ? error.message : String(error),
         });
+        return false;
     }
 }
 
@@ -279,27 +297,31 @@ export async function syncCalibreBooks(
 
             const bookId = await withUser(userId, async (tx) => {
                 if (decisao.kind === 'insert') {
+                    // `calibre_modified` fica de fora aqui de propósito: só é
+                    // gravado depois que a capa for resolvida (abaixo), para
+                    // que uma capa que falhe force reprocessamento no
+                    // próximo run em vez de ficar sem capa para sempre.
                     const [inserted] = await tx
                         .insert(books)
                         .values({
-                            ...metadataValues(livro),
+                            ...semWatermark(metadataValues(livro)),
                             userId,
                             calibre_uuid: livro.uuid,
                             source: 'calibre',
                             owned: true,
                             read_status: 'não lido',
-                        } as BookInsert)
+                        })
                         .returning({ id: books.id });
                     await syncAuthorLinks(tx, inserted.id, authorIds);
                     return inserted.id;
                 }
 
-                // O `set` é literalmente o retorno de `metadataValues`: nada
-                // é acrescentado, então nenhum campo de tracking ou de posse
-                // pode escapar para o UPDATE.
+                // O `set` é literalmente o retorno de `metadataValues` (sem o
+                // watermark): nada é acrescentado, então nenhum campo de
+                // tracking ou de posse pode escapar para o UPDATE.
                 await tx
                     .update(books)
-                    .set(metadataValues(livro) as BookUpdateSet)
+                    .set(semWatermark(metadataValues(livro)))
                     .where(
                         and(
                             eq(books.id, decisao.bookId),
@@ -310,7 +332,20 @@ export async function syncCalibreBooks(
                 return decisao.bookId;
             });
 
-            await syncCover(userId, bookId, livro, calibrePath);
+            const capaOk = await syncCover(userId, bookId, livro, calibrePath);
+            if (capaOk) {
+                // Watermark só avança quando a capa está resolvida (ou não
+                // havia capa a resolver) — é o que garante que uma capa que
+                // falhar seja reprocessada no próximo run, e não perdida.
+                await withUser(userId, (tx) =>
+                    tx
+                        .update(books)
+                        .set({ calibre_modified: livro.lastModified })
+                        .where(
+                            and(eq(books.id, bookId), eq(books.source, 'calibre'))
+                        )
+                );
+            }
 
             if (decisao.kind === 'insert') {
                 resumo.novos++;
