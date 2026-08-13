@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { AuthError } from './auth-user';
+import { AuthError } from './auth-error';
 import { StorageQuotaError } from './storage';
 
 export function errorResponse(err: unknown, mensagem: string): NextResponse {

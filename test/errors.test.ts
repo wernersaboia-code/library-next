@@ -1,13 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-
-// lib/errors.ts importa AuthError de lib/auth-user.ts, que por sua vez
-// importa o cliente drizzle (lib/db/drizzle.ts) — módulo que exige
-// POSTGRES_URL definida. Mocka-se aqui só para permitir a importação;
-// nenhum destes testes toca o banco.
-vi.mock('@/lib/db/drizzle', () => ({ db: {}, client: {} }));
-
-const { errorResponse } = await import('@/lib/errors');
-const { AuthError } = await import('@/lib/auth-user');
+import { errorResponse } from '@/lib/errors';
+import { AuthError } from '@/lib/auth-error';
 
 describe('errorResponse', () => {
   it('nunca vaza a mensagem original no corpo', async () => {

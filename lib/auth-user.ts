@@ -2,13 +2,9 @@ import 'server-only';
 import { db } from '@/lib/db/drizzle';
 import { appUsers } from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
+import { AuthError } from './auth-error';
 
-export class AuthError extends Error {
-  constructor(message = 'Não autenticado') {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
+export { AuthError } from './auth-error';
 
 export async function ensureAppUser(id: string, email: string): Promise<void> {
   await db.insert(appUsers).values({ id, email })
