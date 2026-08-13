@@ -18,7 +18,11 @@ export default function LoginPage() {
     });
     if (error) { setErro('E-mail ou senha inválidos.'); return; }
     // garante a linha app_users antes de qualquer query com FK
-    await fetch('/api/auth/ensure', { method: 'POST' });
+    const res = await fetch('/api/auth/ensure', { method: 'POST' });
+    if (!res.ok) {
+      setErro('Não foi possível inicializar sua conta. Tente novamente.');
+      return;
+    }
     router.replace('/');
     router.refresh();
   }

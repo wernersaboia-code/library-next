@@ -20,9 +20,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch('/api/reading/stats')
-      .then((r) => r.json())
-      .then(setStats);
+    fetch('/api/reading/stats').then((res) => {
+      if (!res.ok) return;
+      res.json().then(setStats);
+    });
   }, []);
 
   if (!stats) return null;
