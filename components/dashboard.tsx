@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   BookOpenIcon,
   BookmarkIcon,
-  ClockIcon,
-  FlameIcon,
   LibraryIcon,
 } from 'lucide-react';
 
@@ -14,8 +12,6 @@ interface Stats {
   lendo: number;
   lidos: number;
   paginasLidas: number;
-  totalMinutes: number;
-  currentStreak: number;
   naoLidos: number;
   porAno: Record<string, number>;
 }
@@ -55,18 +51,6 @@ export default function Dashboard() {
       value: stats.paginasLidas,
       icon: BookOpenIcon,
       color: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30',
-    },
-    {
-      label: 'Minutos',
-      value: stats.totalMinutes,
-      icon: ClockIcon,
-      color: 'text-teal-600 bg-teal-100 dark:text-teal-400 dark:bg-teal-900/30',
-    },
-    {
-      label: 'Sequência',
-      value: `${stats.currentStreak} dias`,
-      icon: FlameIcon,
-      color: 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30',
     },
   ];
 
