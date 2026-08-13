@@ -8,7 +8,7 @@ import {
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
 import { parseSearchParams } from '@/lib/url-state';
-import { getCurrentUserId } from '@/lib/auth';
+import { getCurrentUserId } from '@/lib/auth-user';
 
 export default async function Page(
   props: {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DriveAuthError } from '@/lib/auth-tokens';
+import { AuthError } from '@/lib/auth-user';
 
 // Prova que a rota de stats passa por withUser (logo, sob RLS escopado
 // por usuário) em vez de bater no db singleton sem app.user_id definido.
@@ -7,8 +7,9 @@ import { DriveAuthError } from '@/lib/auth-tokens';
 const withUserMock = vi.fn();
 const getCurrentUserIdMock = vi.fn(async () => 'u-1');
 
-vi.mock('@/lib/auth', () => ({
+vi.mock('@/lib/auth-user', () => ({
   getCurrentUserId: () => getCurrentUserIdMock(),
+  AuthError: class AuthError extends Error {},
 }));
 
 vi.mock('@/lib/db/with-user', () => ({
@@ -44,8 +45,8 @@ describe('GET /api/reading/stats', () => {
     expect(body.naoLidos).toBe(5); // 10 - 2 - 3
   });
 
-  it('devolve 401 quando não há sessão (DriveAuthError)', async () => {
-    getCurrentUserIdMock.mockRejectedValue(new DriveAuthError('Sessão inválida'));
+  it('devolve 401 quando não há sessão (AuthError)', async () => {
+    getCurrentUserIdMock.mockRejectedValue(new AuthError('Sessão inválida'));
 
     const mod = await import('@/app/api/reading/stats/route');
     const res = await mod.GET();

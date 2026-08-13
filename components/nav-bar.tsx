@@ -1,12 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function NavBar() {
-  const { data: session } = useSession();
+  const router = useRouter();
 
-  if (!session) return null;
+  async function sair() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace('/login');
+    router.refresh();
+  }
 
   return (
     <nav className="flex items-center justify-end gap-4 mb-2">
@@ -17,7 +23,7 @@ export default function NavBar() {
         Configurações
       </Link>
       <button
-        onClick={() => signOut()}
+        onClick={sair}
         className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
       >
         Sair

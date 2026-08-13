@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { errorResponse } from '@/lib/errors';
-import { DriveAuthError } from '@/lib/auth-tokens';
+
+// lib/errors.ts importa AuthError de lib/auth-user.ts, que por sua vez
+// importa o cliente drizzle (lib/db/drizzle.ts) — módulo que exige
+// POSTGRES_URL definida. Mocka-se aqui só para permitir a importação;
+// nenhum destes testes toca o banco.
+vi.mock('@/lib/db/drizzle', () => ({ db: {}, client: {} }));
+
+const { errorResponse } = await import('@/lib/errors');
+const { AuthError } = await import('@/lib/auth-user');
 
 describe('errorResponse', () => {
   it('nunca vaza a mensagem original no corpo', async () => {
@@ -17,8 +24,8 @@ describe('errorResponse', () => {
     expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('mapeia DriveAuthError para 401', () => {
-    expect(errorResponse(new DriveAuthError(), 'Erro').status).toBe(401);
+  it('mapeia AuthError para 401', () => {
+    expect(errorResponse(new AuthError(), 'Erro').status).toBe(401);
   });
 
   it('usa 500 para erro desconhecido', () => {

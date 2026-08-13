@@ -1,4 +1,4 @@
-import { getCurrentUserId } from '@/lib/auth';   // ainda NextAuth nesta task; muda na Task 2
+import { getCurrentUserId } from '@/lib/auth-user';
 import { withUser } from '@/lib/db/with-user';
 import { books } from '@/lib/db/schema';
 import { errorResponse } from '@/lib/errors';

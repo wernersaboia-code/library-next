@@ -11,7 +11,7 @@ import { Photo } from '@/components/photo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
-import { getCurrentUserId } from '@/lib/auth';
+import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
 
 const LANGUAGES = [
