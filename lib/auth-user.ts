@@ -7,7 +7,9 @@ import { AuthError } from './auth-error';
 export { AuthError } from './auth-error';
 
 export async function ensureAppUser(id: string, email: string): Promise<void> {
-  await db.insert(appUsers).values({ id, email })
+  // Normaliza para minúsculas: o import do Calibre (resolveUserId) casa por
+  // e-mail em minúsculas; gravar aqui na mesma forma evita identidade paralela.
+  await db.insert(appUsers).values({ id, email: email.trim().toLowerCase() })
     .onConflictDoNothing({ target: appUsers.id });
 }
 
