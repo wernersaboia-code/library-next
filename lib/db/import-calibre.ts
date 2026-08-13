@@ -5,15 +5,47 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import * as ThumbHash from 'thumbhash';
-import { db } from './drizzle';
-import { books, authors, bookToAuthor } from './schema';
-import { getOrCreateAppUserId } from './users';
+import { eq } from 'drizzle-orm';
+import { pathToFileURL } from 'node:url';
+import { client, db } from './drizzle';
+import { books, authors, bookToAuthor, appUsers } from './schema';
+import { withUser } from './with-user';
+// `authorId` e `uploadCover` vivem em módulos marcados com `import
+// 'server-only'` (proteção contra bundle de cliente no Next.js). Fora do
+// Next, esse pacote lança incondicionalmente ao ser importado — por isso
+// `pnpm db:import-calibre` roda com `tsx --conditions=react-server`, que faz
+// o Node resolver `server-only` para o stub vazio em vez do throw.
+import { authorId } from '@/lib/import-book';
+import { uploadCover } from '@/lib/storage';
 
 dotenv.config();
 
 // ─── Configuração ─────────────────────────────────────────────
 const CALIBRE_PATH = 'C:\\Livros\\Calibre Portable\\Calibre Library';
 const CALIBRE_DB   = path.join(CALIBRE_PATH, 'metadata.db');
+
+// ─── Usuário dono da importação ───────────────────────────────
+/**
+ * Faz upsert em `app_users` pelo e-mail informado em `--email=` e devolve o
+ * id. É o dono de todos os livros importados desta execução.
+ */
+export async function resolveUserId(email: string): Promise<string> {
+    if (!email?.trim()) {
+        throw new Error(
+            'Informe o e-mail: pnpm db:import-calibre -- --email=voce@exemplo.com'
+        );
+    }
+    const normalized = email.trim().toLowerCase();
+    const [user] = await db
+        .insert(appUsers)
+        .values({ email: normalized })
+        .onConflictDoUpdate({
+            target: appUsers.email,
+            set: { email: normalized },
+        })
+        .returning({ id: appUsers.id });
+    return user.id;
+}
 
 // ─── ThumbHash ────────────────────────────────────────────────
 async function generateThumbHash(imageBuffer: Buffer): Promise<string | null> {
@@ -32,20 +64,11 @@ async function generateThumbHash(imageBuffer: Buffer): Promise<string | null> {
 }
 
 // ─── Capa do livro ────────────────────────────────────────────
-async function getCoverData(
-    bookPath: string
-): Promise<{ image_url: string | null; thumbhash: string | null }> {
-    try {
-        const coverPath = path.join(CALIBRE_PATH, bookPath, 'cover.jpg');
-        if (!fs.existsSync(coverPath)) return { image_url: null, thumbhash: null };
-
-        const imageBuffer = fs.readFileSync(coverPath);
-        const thumbhash   = await generateThumbHash(imageBuffer);
-
-        return { image_url: coverPath, thumbhash };
-    } catch {
-        return { image_url: null, thumbhash: null };
-    }
+/** Lê o buffer de `cover.jpg` no Calibre, se existir. */
+function readCoverBuffer(bookPath: string): Buffer | null {
+    const coverPath = path.join(CALIBRE_PATH, bookPath, 'cover.jpg');
+    if (!fs.existsSync(coverPath)) return null;
+    return fs.readFileSync(coverPath);
 }
 
 // ─── Helper: query com parâmetros ─────────────────────────────
@@ -102,13 +125,9 @@ async function main() {
         throw new Error(`metadata.db não encontrado em: ${CALIBRE_DB}`);
     }
 
-    const importUserEmail = process.env.IMPORT_USER_EMAIL;
-    if (!importUserEmail) {
-        throw new Error(
-            'Defina IMPORT_USER_EMAIL no .env — os livros importados precisam de um app_users dono.'
-        );
-    }
-    const userId = await getOrCreateAppUserId(importUserEmail);
+    const email = process.argv
+        .find((a) => a.startsWith('--email='))?.split('=')[1] ?? '';
+    const userId = await resolveUserId(email);
 
     // Carrega o banco SQLite em memória
     const SQL      = await initSqlJs();
@@ -218,11 +237,6 @@ async function main() {
             const isbn   = identifiers.find(i => i.type === 'isbn')?.val   ?? null;
             const isbn13 = identifiers.find(i => i.type === 'isbn13')?.val ?? null;
 
-            // ── Capa ──────────────────────────────────────────────
-            const { image_url, thumbhash } = book.has_cover
-                ? await getCoverData(book.path)
-                : { image_url: null, thumbhash: null };
-
             // ── Ano de publicação ─────────────────────────────────
             const pubYear = book.pubdate
                 ? new Date(book.pubdate).getFullYear()
@@ -238,59 +252,69 @@ async function main() {
                 ? String((ratingRow.rating / 2).toFixed(2))
                 : null;
 
-            // ── Inserir autores ───────────────────────────────────
+            // ── Inserir autores (globais, sem RLS, fora do withUser) ──
             const authorIds: string[] = [];
 
             for (const a of calibreAuthors) {
-                const authorId = a.name
-                    .toLowerCase()
-                    .replace(/\s+/g, '-')
-                    .replace(/[^a-z0-9-]/g, '')
-                    .slice(0, 50) || 'desconhecido';
+                const id = authorId(a.name);
 
                 await db
                     .insert(authors)
-                    .values({ id: authorId, name: a.name })
+                    .values({ id, name: a.name })
                     .onConflictDoNothing();
 
-                authorIds.push(authorId);
+                authorIds.push(id);
             }
 
-            // ── Inserir livro ─────────────────────────────────────
-            const inserted = await db
-                .insert(books)
-                .values({
-                    userId,
-                    isbn,
-                    isbn13,
-                    title: book.title,
-                    publication_year: publicationYear,
-                    publisher: publisherRow?.name ?? null,
-                    series: seriesRow
-                        ? `${seriesRow.name}${book.series_index ? ` #${book.series_index}` : ''}`
-                        : null,
-                    language_code: langRow?.lang_code ?? null,
-                    description: commentRow?.text ?? null,
-                    genre,
-                    num_pages: pagesRow?.pages ?? null,
-                    average_rating: averageRating,
-                    read_status: 'não lido',
-                    image_url,
-                    thumbhash,
-                    title_source: book.title,
-                })
-                .onConflictDoNothing()
-                .returning({ id: books.id });
+            // ── Inserir livro + vínculos com autor ────────────────
+            const bookId = await withUser(userId, async (tx) => {
+                const [inserted] = await tx
+                    .insert(books)
+                    .values({
+                        userId,
+                        isbn,
+                        isbn13,
+                        title: book.title,
+                        publication_year: publicationYear,
+                        publisher: publisherRow?.name ?? null,
+                        series: seriesRow
+                            ? `${seriesRow.name}${book.series_index ? ` #${book.series_index}` : ''}`
+                            : null,
+                        language_code: langRow?.lang_code ?? null,
+                        description: commentRow?.text ?? null,
+                        genre,
+                        num_pages: pagesRow?.pages ?? null,
+                        average_rating: averageRating,
+                        read_status: 'não lido',
+                        title_source: book.title,
+                    })
+                    .onConflictDoNothing()
+                    .returning({ id: books.id });
 
-            // ── Inserir relação livro↔autor ───────────────────────
-            if (inserted.length > 0) {
-                const bookId = inserted[0].id;
+                if (!inserted) return null;
 
-                for (const authorId of authorIds) {
-                    await db
+                for (const authId of authorIds) {
+                    await tx
                         .insert(bookToAuthor)
-                        .values({ bookId, authorId })
+                        .values({ bookId: inserted.id, authorId: authId })
                         .onConflictDoNothing();
+                }
+
+                return inserted.id;
+            });
+
+            if (bookId !== null) {
+                // ── Capa: upload para o Storage, nunca caminho local ──
+                if (book.has_cover) {
+                    const buf = readCoverBuffer(book.path);
+                    if (buf) {
+                        const thumbhash = await generateThumbHash(buf);
+                        const imageUrl = await uploadCover(userId, bookId, buf, 'jpg');
+                        await withUser(userId, (tx) =>
+                            tx.update(books)
+                                .set({ image_url: imageUrl, thumbhash })
+                                .where(eq(books.id, bookId)));
+                    }
                 }
 
                 importados++;
@@ -315,4 +339,21 @@ async function main() {
     console.log('─────────────────────────────────');
 }
 
-main().catch(console.error);
+// Executa somente quando rodado diretamente (`tsx lib/db/import-calibre.ts`),
+// nunca quando o módulo é importado (ex.: pelos testes, para reusar
+// `resolveUserId`). `client.end()` roda sempre, sucesso ou erro — sem isso o
+// pool `postgres-js` fica pendurado ~20s (idle_timeout) até o processo
+// encerrar sozinho.
+const isMain = process.argv[1] !== undefined
+    && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMain) {
+    main()
+        .catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+        })
+        .finally(() => {
+            void client.end();
+        });
+}

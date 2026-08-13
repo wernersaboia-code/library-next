@@ -7,7 +7,7 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "tsx lib/db/migrate.ts",
-    "db:import-calibre": "tsx lib/db/import-calibre.ts",
+    "db:import-calibre": "tsx --conditions=react-server lib/db/import-calibre.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint .",
