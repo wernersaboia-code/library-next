@@ -72,7 +72,7 @@ beforeAll(async () => {
 
   await ctx.sql`
     insert into highlights (user_id, book_id, kind, text_content)
-    values (${userA}, ${bookAId}, 'highlight', 'segredo de A')`;
+    values (${userA}, ${bookAId}, 'quote', 'segredo de A')`;
 
   await ctx.sql`
     insert into authors (id, name) values ('author-1', 'Autor Um')`;
@@ -122,7 +122,7 @@ describe('RLS', () => {
     await expect(
       asUser(userB, (tx) =>
         tx`insert into highlights (user_id, book_id, kind)
-           values (${userA}, ${bookAId}, 'bookmark')`)
+           values (${userA}, ${bookAId}, 'note')`)
     ).rejects.toThrow(/row-level security/);
   });
 

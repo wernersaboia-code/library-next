@@ -1,15 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DriveAuthError } from '@/lib/auth-tokens';
+import { AuthError } from '@/lib/auth-error';
 
-// Prova que as rotas de leitura passam por withUser (logo, sob RLS escopado
+// Prova que a rota de stats passa por withUser (logo, sob RLS escopado
 // por usuário) em vez de bater no db singleton sem app.user_id definido.
 
 const withUserMock = vi.fn();
 const getCurrentUserIdMock = vi.fn(async () => 'u-1');
 
-vi.mock('@/lib/auth', () => ({
-  getCurrentUserId: () => getCurrentUserIdMock(),
-}));
+// Reusa o AuthError REAL (módulo leve, sem drizzle) para que o
+// `instanceof AuthError` dentro de errorResponse case e o erro vire 401.
+vi.mock('@/lib/auth-user', async () => {
+  const { AuthError } = await import('@/lib/auth-error');
+  return {
+    getCurrentUserId: () => getCurrentUserIdMock(),
+    AuthError,
+  };
+});
 
 vi.mock('@/lib/db/with-user', () => ({
   withUser: (uid: string, fn: unknown) => withUserMock(uid, fn),
@@ -29,8 +35,6 @@ describe('GET /api/reading/stats', () => {
       lendo: 2,
       lidos: 3,
       paginasLidas: 400,
-      totalMinutes: 120,
-      streak: [],
     });
 
     const mod = await import('@/app/api/reading/stats/route');
@@ -46,104 +50,13 @@ describe('GET /api/reading/stats', () => {
     expect(body.naoLidos).toBe(5); // 10 - 2 - 3
   });
 
-  it('devolve 401 quando não há sessão (DriveAuthError)', async () => {
-    getCurrentUserIdMock.mockRejectedValue(new DriveAuthError('Sessão inválida'));
+  it('devolve 401 quando não há sessão (AuthError)', async () => {
+    getCurrentUserIdMock.mockRejectedValue(new AuthError('Sessão inválida'));
 
     const mod = await import('@/app/api/reading/stats/route');
     const res = await mod.GET();
 
     expect(res.status).toBe(401);
     expect(withUserMock).not.toHaveBeenCalled();
-  });
-});
-
-describe('DELETE /api/reading/annotations', () => {
-  it('apaga dentro de withUser — o RLS filtra pelo dono e fecha o IDOR', async () => {
-    const mod = await import('@/app/api/reading/annotations/route');
-    const res = await mod.DELETE(
-      new Request('http://x/api/reading/annotations', {
-        method: 'DELETE',
-        body: JSON.stringify({ id: 42 }),
-      })
-    );
-
-    expect(res.status).toBe(200);
-    // Sem withUser não há app.user_id → o DELETE por id vazaria cross-user.
-    expect(withUserMock).toHaveBeenCalledTimes(1);
-    expect(withUserMock.mock.calls[0][0]).toBe('u-1');
-  });
-
-  it('rejeita sem id, antes de tocar no banco', async () => {
-    const mod = await import('@/app/api/reading/annotations/route');
-    const res = await mod.DELETE(
-      new Request('http://x/api/reading/annotations', {
-        method: 'DELETE',
-        body: JSON.stringify({}),
-      })
-    );
-
-    expect(res.status).toBe(400);
-    expect(withUserMock).not.toHaveBeenCalled();
-  });
-
-  it('devolve 401 quando não há sessão', async () => {
-    getCurrentUserIdMock.mockRejectedValue(new DriveAuthError('Sessão inválida'));
-
-    const mod = await import('@/app/api/reading/annotations/route');
-    const res = await mod.DELETE(
-      new Request('http://x/api/reading/annotations', {
-        method: 'DELETE',
-        body: JSON.stringify({ id: 42 }),
-      })
-    );
-
-    expect(res.status).toBe(401);
-  });
-});
-
-describe('GET /api/reading/annotations', () => {
-  it('lista destaques dentro de withUser', async () => {
-    withUserMock.mockResolvedValue([]);
-
-    const mod = await import('@/app/api/reading/annotations/route');
-    const res = await mod.GET(
-      new Request('http://x/api/reading/annotations?bookId=1')
-    );
-
-    expect(res.status).toBe(200);
-    expect(withUserMock).toHaveBeenCalledTimes(1);
-    expect(withUserMock.mock.calls[0][0]).toBe('u-1');
-  });
-});
-
-describe('POST /api/reading/heartbeat', () => {
-  it('registra tempo dentro de withUser', async () => {
-    const mod = await import('@/app/api/reading/heartbeat/route');
-    const res = await mod.POST(
-      new Request('http://x/api/reading/heartbeat', {
-        method: 'POST',
-        body: JSON.stringify({ bookId: 1, seconds: 30 }),
-      })
-    );
-
-    expect(res.status).toBe(200);
-    expect(withUserMock).toHaveBeenCalledTimes(1);
-    expect(withUserMock.mock.calls[0][0]).toBe('u-1');
-  });
-});
-
-describe('POST /api/reading/progress', () => {
-  it('salva progresso dentro de withUser', async () => {
-    const mod = await import('@/app/api/reading/progress/route');
-    const res = await mod.POST(
-      new Request('http://x/api/reading/progress', {
-        method: 'POST',
-        body: JSON.stringify({ bookId: 1, cfi: 'epubcfi(/6/4)', percentage: 50 }),
-      })
-    );
-
-    expect(res.status).toBe(200);
-    expect(withUserMock).toHaveBeenCalledTimes(1);
-    expect(withUserMock.mock.calls[0][0]).toBe('u-1');
   });
 });

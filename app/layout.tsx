@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
-import SessionProvider from '@/components/session-provider';
 
 export const metadata: Metadata = {
   title: 'Book Inventory',
@@ -23,10 +22,8 @@ export default function RootLayout({
           GeistSans.variable
         )}
       >
-        <SessionProvider>
-          <Toaster closeButton />
-          {children}
-        </SessionProvider>
+        <Toaster closeButton />
+        {children}
       </body>
     </html>
   );

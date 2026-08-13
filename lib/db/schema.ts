@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
-  pgTable, serial, text, integer, timestamp, decimal,
-  primaryKey, index, uuid, jsonb, numeric, customType, unique,
+  pgTable, serial, text, integer, timestamp, decimal, date,
+  primaryKey, index, uuid, customType,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -62,6 +62,10 @@ export const books = pgTable(
     title_source: text('title_source').notNull(),
     title_tsv: tsvector('title_tsv'),
 
+    my_rating: integer('my_rating'),
+    date_started: date('date_started'),
+    date_finished: date('date_finished'),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
   },
@@ -89,75 +93,6 @@ export const bookToAuthor = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.bookId, t.authorId] }) })
 );
 
-export const driveFiles = pgTable(
-  'drive_files',
-  {
-    id: serial('id').primaryKey(),
-    userId: uuid('user_id').notNull()
-      .references(() => appUsers.id, { onDelete: 'cascade' }),
-    bookId: integer('book_id').notNull()
-      .references(() => books.id, { onDelete: 'cascade' }),
-    fileId: text('file_id').notNull(),
-    mimeType: text('mime_type').notNull(),
-    sizeBytes: integer('size_bytes'),
-    modifiedTime: text('modified_time'),
-    cachedPath: text('cached_path'),
-    importedAt: timestamp('imported_at', { withTimezone: true })
-      .defaultNow().notNull(),
-  },
-  (t) => ({
-    userBookIdx: index('idx_drive_files_user_book').on(t.userId, t.bookId),
-    userFileIdx: index('idx_drive_files_user_file').on(t.userId, t.fileId),
-  })
-);
-
-export const driveSettings = pgTable('drive_settings', {
-  id: serial('id').primaryKey(),
-  userId: uuid('user_id').notNull()
-    .references(() => appUsers.id, { onDelete: 'cascade' }),
-  folderId: text('folder_id').notNull(),
-  folderName: text('folder_name'),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .defaultNow().notNull(),
-});
-
-export const readingProgress = pgTable(
-  'reading_progress',
-  {
-    id: serial('id').primaryKey(),
-    userId: uuid('user_id').notNull()
-      .references(() => appUsers.id, { onDelete: 'cascade' }),
-    bookId: integer('book_id').notNull()
-      .references(() => books.id, { onDelete: 'cascade' }),
-    locator: jsonb('locator').default({}).notNull(),
-    percentage: numeric('percentage', { precision: 5, scale: 4 }),
-    secondsRead: integer('seconds_read').default(0).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow().notNull(),
-  },
-  (t) => ({
-    userBookUnique: unique('reading_progress_user_book_unique')
-      .on(t.userId, t.bookId),
-  })
-);
-
-export const readingSessions = pgTable('reading_sessions', {
-  id: serial('id').primaryKey(),
-  userId: uuid('user_id').notNull()
-    .references(() => appUsers.id, { onDelete: 'cascade' }),
-  bookId: integer('book_id').notNull()
-    .references(() => books.id, { onDelete: 'cascade' }),
-  startedAt: timestamp('started_at', { withTimezone: true })
-    .defaultNow().notNull(),
-  endedAt: timestamp('ended_at', { withTimezone: true }),
-  durationSeconds: integer('duration_seconds').default(0).notNull(),
-});
-
-export type Locator =
-  | { kind: 'epub'; cfi: string }
-  | { kind: 'pdf'; page: number }
-  | Record<string, never>;
-
 export const highlights = pgTable(
   'highlights',
   {
@@ -169,15 +104,9 @@ export const highlights = pgTable(
     kind: text('kind').notNull(),
 
     textContent: text('text_content'),
-    contextBefore: text('context_before'),
-    contextAfter: text('context_after'),
-
-    locator: jsonb('locator').$type<Locator>().default({}).notNull(),
-    progress: numeric('progress', { precision: 5, scale: 4 }),
 
     color: text('color').default('#ffff00').notNull(),
     note: text('note'),
-    noteUpdatedAt: timestamp('note_updated_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
@@ -191,21 +120,7 @@ export const highlights = pgTable(
     userCreatedIdx: index('idx_highlights_user_created')
       .on(t.userId, t.createdAt),
     userBookIdx: index('idx_highlights_user_book')
-      .on(t.userId, t.bookId, t.progress),
-  })
-);
-
-export const apiUsage = pgTable(
-  'api_usage',
-  {
-    userId: uuid('user_id').notNull()
-      .references(() => appUsers.id, { onDelete: 'cascade' }),
-    endpoint: text('endpoint').notNull(),
-    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
-    count: integer('count').default(0).notNull(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.userId, t.endpoint, t.windowStart] }),
+      .on(t.userId, t.bookId),
   })
 );
 

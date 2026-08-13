@@ -2,7 +2,6 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 
 export const COVERS_BUCKET = 'covers';
-export const BOOKS_BUCKET = 'books';
 
 export class StorageQuotaError extends Error {
   constructor(message = 'Espaço de armazenamento esgotado') {
@@ -17,11 +16,6 @@ function client() {
   if (!url || !key) throw new Error('SUPABASE_URL/SERVICE_ROLE_KEY ausentes');
   return createClient(url, key, { auth: { persistSession: false } });
 }
-
-const EXT: Record<string, string> = {
-  'application/epub+zip': 'epub',
-  'application/pdf': 'pdf',
-};
 
 function isQuota(msg: string) {
   return /exceeded|quota|maximum allowed size|payload too large/i.test(msg);
@@ -51,32 +45,4 @@ export async function uploadCover(
     throw new Error(`Falha ao subir capa: ${error.message}`);
   }
   return bucket.getPublicUrl(path).data.publicUrl;
-}
-
-export async function uploadBookFile(
-  userId: string, bookId: number, buf: Buffer, mimeType: string
-): Promise<string> {
-  const ext = EXT[mimeType];
-  if (!ext) throw new Error(`Mime type não suportado: ${mimeType}`);
-  const path = `${userId}/${bookId}/book.${ext}`;
-  const { error } = await client().storage
-    .from(BOOKS_BUCKET)
-    .upload(path, buf, { contentType: mimeType, upsert: true });
-  if (error) {
-    if (isQuota(error.message)) throw new StorageQuotaError(error.message);
-    throw new Error(`Falha ao subir arquivo: ${error.message}`);
-  }
-  return path;
-}
-
-export async function createSignedUrl(
-  path: string, expiresInSeconds = 3600
-): Promise<string> {
-  const { data, error } = await client().storage
-    .from(BOOKS_BUCKET)
-    .createSignedUrl(path, expiresInSeconds);
-  if (error || !data) {
-    throw new Error(`Falha ao gerar URL assinada: ${error?.message}`);
-  }
-  return data.signedUrl;
 }

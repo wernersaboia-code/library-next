@@ -11,11 +11,10 @@ import { Photo } from '@/components/photo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
-import { db } from '@/lib/db/drizzle';
-import { driveFiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { getCurrentUserId } from '@/lib/auth';
+import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
+import { TrackingControls } from './tracking-controls';
+import { NotesSection } from './notes-section';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -46,13 +45,6 @@ export default async function Page(
   const book = await fetchBookById(userId, params.id);
   if (!book) notFound();
 
-  const driveFile = await db
-    .select({ fileId: driveFiles.fileId, mimeType: driveFiles.mimeType })
-    .from(driveFiles)
-    .where(eq(driveFiles.bookId, parseInt(params.id)))
-    .limit(1)
-    .then((r) => r[0]);
-
   return (
     <ScrollArea className="px-4 h-full">
       <div className="flex items-center justify-between mb-4">
@@ -61,19 +53,6 @@ export default async function Page(
             <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
           </Link>
         </Button>
-        {driveFile?.mimeType && (
-          <Button asChild>
-            <Link
-              href={
-                driveFile.mimeType === 'application/epub+zip'
-                  ? `/read/${params.id}`
-                  : `/read/pdf/${params.id}`
-              }
-            >
-              Ler
-            </Link>
-          </Button>
-        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -109,6 +88,16 @@ export default async function Page(
 
           <p className="text-gray-700 mb-6">{book.description}</p>
 
+          <TrackingControls
+            bookId={book.id}
+            initial={{
+              readStatus: book.read_status,
+              dateStarted: book.date_started,
+              dateFinished: book.date_finished,
+              myRating: book.my_rating,
+            }}
+          />
+
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="flex items-center">
               <BookOpenIcon className="w-5 h-5 mr-2 text-gray-600" />
@@ -126,6 +115,8 @@ export default async function Page(
               <span>ISBN: {book.isbn || 'Nenhum'}</span>
             </div>
           </div>
+
+          <NotesSection bookId={book.id} />
         </div>
       </div>
     </ScrollArea>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { errorResponse } from '@/lib/errors';
-import { DriveAuthError } from '@/lib/auth-tokens';
+import { AuthError } from '@/lib/auth-error';
 
 describe('errorResponse', () => {
   it('nunca vaza a mensagem original no corpo', async () => {
@@ -17,8 +17,8 @@ describe('errorResponse', () => {
     expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('mapeia DriveAuthError para 401', () => {
-    expect(errorResponse(new DriveAuthError(), 'Erro').status).toBe(401);
+  it('mapeia AuthError para 401', () => {
+    expect(errorResponse(new AuthError(), 'Erro').status).toBe(401);
   });
 
   it('usa 500 para erro desconhecido', () => {

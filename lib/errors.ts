@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { DriveAuthError } from './auth-tokens';
+import { AuthError } from './auth-error';
 import { StorageQuotaError } from './storage';
 
 export function errorResponse(err: unknown, mensagem: string): NextResponse {
@@ -14,9 +14,9 @@ export function errorResponse(err: unknown, mensagem: string): NextResponse {
     timestamp: new Date().toISOString(),
   }));
 
-  if (err instanceof DriveAuthError) {
+  if (err instanceof AuthError) {
     return NextResponse.json(
-      { error: 'Acesso ao Google Drive expirou. Entre novamente.', requestId },
+      { error: 'Sessão expirada. Entre novamente.', requestId },
       { status: 401 }
     );
   }
