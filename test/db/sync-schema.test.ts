@@ -35,7 +35,7 @@ describe('schema de sync e posse', () => {
       values (${userId}, 'B', 'B', 'uuid-1')`).rejects.toThrow(/duplicate key|unique/i);
   });
 
-  it('permite vários livros manuais (calibre_uuid nulo) — índice é parcial', async () => {
+  it('permite vários livros manuais (calibre_uuid nulo)', async () => {
     await ctx.sql`
       insert into books (user_id, title, title_source, source, owned)
       values (${userId}, 'M1', 'M1', 'manual', false)`;
@@ -45,5 +45,16 @@ describe('schema de sync e posse', () => {
     const rows = await ctx.sql`
       select id from books where source = 'manual'`;
     expect(rows).toHaveLength(2);
+  });
+
+  it('o índice de calibre_uuid é parcial (só vale quando uuid não é nulo)', async () => {
+    const [idx] = await ctx.sql`
+      select indexdef from pg_indexes
+      where indexname = 'books_user_calibre_uuid_unique'
+        and schemaname = current_schema()`;
+    expect(idx).toBeDefined();
+    if (!idx) return;
+    expect(String(idx.indexdef)).toMatch(/unique/i);
+    expect(String(idx.indexdef)).toMatch(/where .*calibre_uuid.*is not null/i);
   });
 });
