@@ -4,13 +4,7 @@ const upload = vi.fn();
 const getPublicUrl = vi.fn(() => ({
   data: { publicUrl: 'https://cdn/x.jpg' },
 }));
-const createSignedUrl = vi.fn(async (): Promise<{
-  data: { signedUrl: string } | null;
-  error: { message: string } | null;
-}> => ({
-  data: { signedUrl: 'https://cdn/signed' }, error: null,
-}));
-const from = vi.fn(() => ({ upload, getPublicUrl, createSignedUrl }));
+const from = vi.fn(() => ({ upload, getPublicUrl }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
@@ -34,25 +28,6 @@ describe('storage', () => {
       expect.objectContaining({ upsert: true })
     );
     expect(url).toBe('https://cdn/x.jpg');
-  });
-
-  it('converte estouro de quota em StorageQuotaError', async () => {
-    upload.mockResolvedValue({
-      data: null, error: { message: 'exceeded the maximum allowed size' },
-    });
-    const { uploadBookFile, StorageQuotaError } = await import('@/lib/storage');
-    await expect(
-      uploadBookFile('u1', 42, Buffer.from('x'), 'application/epub+zip')
-    ).rejects.toBeInstanceOf(StorageQuotaError);
-  });
-
-  it('usa a extensão certa por mime type', async () => {
-    upload.mockResolvedValue({ data: { path: 'p' }, error: null });
-    const { uploadBookFile } = await import('@/lib/storage');
-    const path = await uploadBookFile(
-      'u1', 7, Buffer.from('x'), 'application/pdf'
-    );
-    expect(path).toBe('u1/7/book.pdf');
   });
 
   it('converte estouro de quota em StorageQuotaError na capa', async () => {
@@ -86,43 +61,5 @@ describe('storage', () => {
       uploadCover('u1', 42, Buffer.from('x'), 'gif')
     ).rejects.toThrow(/gif/);
     expect(upload).not.toHaveBeenCalled();
-  });
-
-  it('devolve a signedUrl gerada pelo Supabase', async () => {
-    createSignedUrl.mockResolvedValueOnce({
-      data: { signedUrl: 'https://cdn/signed-especial' }, error: null,
-    });
-    const { createSignedUrl: createSignedUrlFn } = await import('@/lib/storage');
-    const url = await createSignedUrlFn('u1/42/book.pdf');
-    expect(url).toBe('https://cdn/signed-especial');
-  });
-
-  it('usa 3600s por padrão e repassa valor explícito ao SDK', async () => {
-    const { createSignedUrl: createSignedUrlFn } = await import('@/lib/storage');
-
-    await createSignedUrlFn('u1/42/book.pdf');
-    expect(createSignedUrl).toHaveBeenCalledWith('u1/42/book.pdf', 3600);
-
-    await createSignedUrlFn('u1/42/book.pdf', 120);
-    expect(createSignedUrl).toHaveBeenCalledWith('u1/42/book.pdf', 120);
-  });
-
-  it('lança em português quando o SDK falha ao gerar a URL assinada', async () => {
-    createSignedUrl.mockResolvedValueOnce({
-      data: null, error: { message: 'not found' },
-    });
-    const { createSignedUrl: createSignedUrlFn } = await import('@/lib/storage');
-    await expect(createSignedUrlFn('u1/42/book.pdf')).rejects.toThrow(
-      /Falha ao gerar URL assinada/
-    );
-  });
-
-  it('opera sobre o bucket books, não covers', async () => {
-    const { createSignedUrl: createSignedUrlFn, BOOKS_BUCKET } = await import(
-      '@/lib/storage'
-    );
-    await createSignedUrlFn('u1/42/book.pdf');
-    expect(from).toHaveBeenCalledWith(BOOKS_BUCKET);
-    expect(from).not.toHaveBeenCalledWith('covers');
   });
 });

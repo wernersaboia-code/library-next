@@ -10,12 +10,12 @@ import { pathToFileURL } from 'node:url';
 import { client, db } from './drizzle';
 import { books, authors, bookToAuthor, appUsers } from './schema';
 import { withUser } from './with-user';
-// `authorId` e `uploadCover` vivem em módulos marcados com `import
-// 'server-only'` (proteção contra bundle de cliente no Next.js). Fora do
-// Next, esse pacote lança incondicionalmente ao ser importado — por isso
-// `pnpm db:import-calibre` roda com `tsx --conditions=react-server`, que faz
-// o Node resolver `server-only` para o stub vazio em vez do throw.
-import { authorId } from '@/lib/import-book';
+// `uploadCover` vive em um módulo marcado com `import 'server-only'`
+// (proteção contra bundle de cliente no Next.js). Fora do Next, esse pacote
+// lança incondicionalmente ao ser importado — por isso `pnpm
+// db:import-calibre` roda com `tsx --conditions=react-server`, que faz o
+// Node resolver `server-only` para o stub vazio em vez do throw.
+import { authorId } from '@/lib/authors';
 import { uploadCover } from '@/lib/storage';
 
 dotenv.config();
