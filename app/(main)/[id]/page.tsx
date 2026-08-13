@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
+import { TrackingControls } from './tracking-controls';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -85,6 +86,16 @@ export default async function Page(
           </div>
 
           <p className="text-gray-700 mb-6">{book.description}</p>
+
+          <TrackingControls
+            bookId={book.id}
+            initial={{
+              readStatus: book.read_status,
+              dateStarted: book.date_started,
+              dateFinished: book.date_finished,
+              myRating: book.my_rating,
+            }}
+          />
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="flex items-center">
