@@ -23,7 +23,7 @@ describe('schema', () => {
 
     await ctx.sql`
       insert into highlights (user_id, book_id, kind, text_content, note)
-      values (${u.id}, ${b.id}, 'highlight', 'as leituras de verão', 'meu comentário')`;
+      values (${u.id}, ${b.id}, 'quote', 'as leituras de verão', 'meu comentário')`;
 
     // stemming português: "leitura" encontra "leituras"
     const rows = await ctx.sql`
@@ -57,7 +57,7 @@ describe('schema', () => {
       insert into books (user_id, title, title_source)
       values (${u.id}, 'L', 'L') returning id`;
     await ctx.sql`insert into highlights (user_id, book_id, kind)
-                  values (${u.id}, ${b.id}, 'bookmark')`;
+                  values (${u.id}, ${b.id}, 'note')`;
     await ctx.sql`delete from books where id = ${b.id}`;
     // Escopado por book_id: a suíte reusa o mesmo schema entre os `it`s
     // (um único createTestDb por describe), então outros testes já

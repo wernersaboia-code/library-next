@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
-  pgTable, serial, text, integer, timestamp, decimal,
-  primaryKey, index, uuid, jsonb, numeric, customType,
+  pgTable, serial, text, integer, timestamp, decimal, date,
+  primaryKey, index, uuid, customType,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -62,6 +62,10 @@ export const books = pgTable(
     title_source: text('title_source').notNull(),
     title_tsv: tsvector('title_tsv'),
 
+    my_rating: integer('my_rating'),
+    date_started: date('date_started'),
+    date_finished: date('date_finished'),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
   },
@@ -89,11 +93,6 @@ export const bookToAuthor = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.bookId, t.authorId] }) })
 );
 
-export type Locator =
-  | { kind: 'epub'; cfi: string }
-  | { kind: 'pdf'; page: number }
-  | Record<string, never>;
-
 export const highlights = pgTable(
   'highlights',
   {
@@ -105,15 +104,9 @@ export const highlights = pgTable(
     kind: text('kind').notNull(),
 
     textContent: text('text_content'),
-    contextBefore: text('context_before'),
-    contextAfter: text('context_after'),
-
-    locator: jsonb('locator').$type<Locator>().default({}).notNull(),
-    progress: numeric('progress', { precision: 5, scale: 4 }),
 
     color: text('color').default('#ffff00').notNull(),
     note: text('note'),
-    noteUpdatedAt: timestamp('note_updated_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
@@ -127,7 +120,7 @@ export const highlights = pgTable(
     userCreatedIdx: index('idx_highlights_user_created')
       .on(t.userId, t.createdAt),
     userBookIdx: index('idx_highlights_user_book')
-      .on(t.userId, t.bookId, t.progress),
+      .on(t.userId, t.bookId),
   })
 );
 
