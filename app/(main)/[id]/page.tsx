@@ -14,6 +14,7 @@ import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
 import { TrackingControls } from './tracking-controls';
+import { NotesSection } from './notes-section';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -114,6 +115,8 @@ export default async function Page(
               <span>ISBN: {book.isbn || 'Nenhum'}</span>
             </div>
           </div>
+
+          <NotesSection bookId={book.id} />
         </div>
       </div>
     </ScrollArea>
