@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
   pgTable, serial, text, integer, timestamp, decimal, date,
-  primaryKey, index, uuid, customType, boolean,
+  primaryKey, index, uuid, customType, boolean, real,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -43,7 +43,10 @@ export const books = pgTable(
 
     publication_year: integer('publication_year'),
     publisher: text('publisher'),
+    // Nome da série, sem o número do volume — que fica em series_index.
+    // Guardar "Nome #2" numa coluna só impedia agrupar volumes da mesma série.
     series: text('series'),
+    series_index: real('series_index'),
     language_code: text('language_code'),
 
     description: text('description'),

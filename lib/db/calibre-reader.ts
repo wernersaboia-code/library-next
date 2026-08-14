@@ -193,9 +193,10 @@ export async function readCalibreLibrary(
                 authors: autores.map((a) => a.name),
                 publicationYear: pubYear && pubYear > 1000 ? pubYear : null,
                 publisher: publisherRow?.name ?? null,
-                series: seriesRow
-                    ? `${seriesRow.name}${book.series_index ? ` #${book.series_index}` : ''}`
-                    : null,
+                // Nome e volume vão em colunas separadas: concatenar os dois
+                // fazia cada volume virar uma série diferente no agrupamento.
+                series: seriesRow?.name ?? null,
+                seriesIndex: seriesRow ? book.series_index ?? null : null,
                 languageCode: langRow?.lang_code ?? null,
                 description: commentRow?.text ?? null,
                 genre: tags.length > 0 ? tags[0].name : null,

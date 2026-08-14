@@ -5,7 +5,8 @@ function input(over: Partial<CalibreBookInput> = {}): CalibreBookInput {
   return {
     uuid: 'u-1', lastModified: '2026-01-01 10:00:00+00:00',
     title: 'Livro', authors: ['Autor'], publicationYear: 2020,
-    publisher: 'Ed', series: null, languageCode: 'pt', description: 'd',
+    publisher: 'Ed', series: null, seriesIndex: null, languageCode: 'pt',
+    description: 'd',
     genre: 'Ficção', numPages: 300, averageRating: '4.00',
     isbn: null, isbn13: null, hasCover: true, path: 'Autor/Livro (1)', ...over,
   };
