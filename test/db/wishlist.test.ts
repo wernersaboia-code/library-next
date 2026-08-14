@@ -78,4 +78,19 @@ describe('fetchWishlist', () => {
     const rows = await fetchWishlist(userId);
     expect(rows.some((r) => r.title === 'Manual Possuido')).toBe(false);
   });
+
+  it('devolve capa e nota dos leitores', async () => {
+    const [u] = await ctx.sql`insert into app_users (email) values ('wn@x.com') returning id`;
+    await ctx.sql`
+      insert into books (user_id, title, title_source, source, owned,
+                         image_url, average_rating, ratings_count)
+      values (${u.id}, 'Com Nota', 'Com Nota', 'manual', false,
+              'https://cdn/c.jpg', 4.32, 1847)`;
+    const { fetchWishlist } = await import('@/lib/db/queries');
+    const rows = await fetchWishlist(u.id);
+    const livro = rows.find((r) => r.title === 'Com Nota');
+    expect(livro?.image_url).toBe('https://cdn/c.jpg');
+    expect(Number(livro?.average_rating)).toBeCloseTo(4.32);
+    expect(livro?.ratings_count).toBe(1847);
+  });
 });

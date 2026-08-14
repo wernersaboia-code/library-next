@@ -3,24 +3,32 @@
 
 import Image from 'next/image';
 import { createPngDataUri } from 'unlazy/thumbhash';
+import { CoverBadges } from './cover-badges';
 
 export function Photo({
   src,
   title,
   thumbhash,
   priority,
+  readStatus = null,
+  myRating = null,
 }: {
   src: string | null;
   title: string;
   thumbhash: string | null;
   priority: boolean;
+  readStatus?: string | null;
+  myRating?: number | null;
 }) {
+  // Um livro lido sem capa também merece o selo, por isso as marcações
+  // aparecem nos dois caminhos.
   if (!src) {
     return (
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md bg-muted shadow-md flex items-center justify-center">
         <span className="px-2 text-center text-xs text-muted-foreground">
           {title}
         </span>
+        <CoverBadges readStatus={readStatus} myRating={myRating} />
       </div>
     );
   }
@@ -38,6 +46,7 @@ export function Photo({
         priority={priority}
         className="object-cover"
       />
+      <CoverBadges readStatus={readStatus} myRating={myRating} />
     </div>
   );
 }

@@ -62,6 +62,8 @@ export default async function Page(
             title={book.title}
             thumbhash={book.thumbhash}
             priority={true}
+            readStatus={book.read_status}
+            myRating={book.my_rating}
           />
         </div>
 
