@@ -96,6 +96,15 @@ const publisherFilter = (pub?: string) => {
     return like(books.publisher, `%${pub}%`);
 };
 
+// Default do catálogo é "possuídos" — livros desejados/não-possuídos não
+// devem sujar a listagem por padrão. Só 'todos' remove o filtro; qualquer
+// outro valor não reconhecido cai no default (possuídos).
+const posseFilter = (posse?: string) => {
+    if (posse === 'todos') return undefined;
+    if (posse === 'nao-possuidos') return eq(books.owned, false);
+    return eq(books.owned, true);
+};
+
 // — Helpers —
 
 function buildFilters(searchParams: SearchParams, requireImage = false) {
@@ -111,6 +120,7 @@ function buildFilters(searchParams: SearchParams, requireImage = false) {
         statusFilter(searchParams.status),
         seriesFilter(searchParams.series),
         publisherFilter(searchParams.pub),
+        posseFilter(searchParams.posse),
     ].filter(Boolean);
 }
 

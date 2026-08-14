@@ -11,6 +11,7 @@ export interface SearchParams {
   status?: string;  // lido | lendo | não lido
   series?: string;  // 'sim' | 'não'
   pub?: string;     // editora
+  posse?: string;   // possuidos | nao-possuidos | todos
 }
 
 export function parseSearchParams(
@@ -28,6 +29,7 @@ export function parseSearchParams(
     status: typeof params.status === 'string' ? params.status : undefined,
     series: typeof params.series === 'string' ? params.series : undefined,
     pub: typeof params.pub === 'string' ? params.pub : undefined,
+    posse: typeof params.posse === 'string' ? params.posse : undefined,
   };
 }
 

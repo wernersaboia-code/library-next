@@ -34,6 +34,7 @@ describe('GET /api/reading/stats', () => {
       totalBooks: 10,
       lendo: 2,
       lidos: 3,
+      naoLidos: 5,
       paginasLidas: 400,
     });
 
@@ -47,7 +48,9 @@ describe('GET /api/reading/stats', () => {
 
     const body = await res.json();
     expect(body.totalBooks).toBe(10);
-    expect(body.naoLidos).toBe(5); // 10 - 2 - 3
+    // naoLidos agora vem pronto de dentro de withUser (calculado em SQL,
+    // AD-7), não mais derivado aqui — o mock só precisa devolvê-lo.
+    expect(body.naoLidos).toBe(5);
   });
 
   it('devolve 401 quando não há sessão (AuthError)', async () => {
