@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
   pgTable, serial, text, integer, timestamp, decimal, date,
-  primaryKey, index, uuid, customType,
+  primaryKey, index, uuid, customType, boolean,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -66,6 +66,11 @@ export const books = pgTable(
     date_started: date('date_started'),
     date_finished: date('date_finished'),
 
+    calibre_uuid: text('calibre_uuid'),
+    calibre_modified: text('calibre_modified'),
+    source: text('source').notNull().default('calibre'),
+    owned: boolean('owned').notNull().default(true),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
   },
@@ -79,6 +84,7 @@ export const books = pgTable(
     ratingIdx: index('idx_books_average_rating').on(t.average_rating),
     langIdx: index('idx_books_language_code').on(t.language_code),
     pagesIdx: index('idx_books_num_pages').on(t.num_pages),
+    userOwnedIdx: index('idx_books_user_owned').on(t.userId, t.owned),
   })
 );
 

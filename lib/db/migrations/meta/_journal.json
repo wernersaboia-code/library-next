@@ -71,6 +71,13 @@
       "when": 1786639053536,
       "tag": "0009_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786662272476,
+      "tag": "0010_sync_ownership",
+      "breakpoints": true
     }
   ]
 }

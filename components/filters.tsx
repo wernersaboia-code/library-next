@@ -44,6 +44,12 @@ const SERIES_OPTIONS = [
   { value: 'não', label: 'Livro avulso' },
 ];
 
+const POSSE_OPTIONS = [
+  { value: 'possuidos', label: 'Possuídos' },
+  { value: 'nao-possuidos', label: 'Não possuídos' },
+  { value: 'todos', label: 'Todos' },
+];
+
 interface FilterProps {
   searchParams: URLSearchParams;
 }
@@ -85,6 +91,12 @@ function FilterBase({ searchParams }: FilterProps) {
       value: string
   ) => {
     handleFilterChange(filterType, value === 'todos' ? undefined : value);
+  };
+
+  // Posse tem default próprio ('possuidos', não 'todos'): omitir o parâmetro
+  // da URL já produz o comportamento padrão (só possuídos) em buildFilters.
+  const handlePosseChange = (value: string) => {
+    handleFilterChange('posse', value === 'possuidos' ? undefined : value);
   };
 
   const hasFilters = Object.values(optimisticFilters).some(
@@ -214,6 +226,26 @@ function FilterBase({ searchParams }: FilterProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {SERIES_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Posse */}
+            <div>
+              <Label htmlFor="posse">Posse</Label>
+              <Select
+                  value={optimisticFilters.posse ?? 'possuidos'}
+                  onValueChange={handlePosseChange}
+              >
+                <SelectTrigger id="posse" className="mt-2">
+                  <SelectValue placeholder="Possuídos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {POSSE_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>

@@ -96,6 +96,15 @@ const publisherFilter = (pub?: string) => {
     return like(books.publisher, `%${pub}%`);
 };
 
+// Default do catálogo é "possuídos" — livros desejados/não-possuídos não
+// devem sujar a listagem por padrão. Só 'todos' remove o filtro; qualquer
+// outro valor não reconhecido cai no default (possuídos).
+const posseFilter = (posse?: string) => {
+    if (posse === 'todos') return undefined;
+    if (posse === 'nao-possuidos') return eq(books.owned, false);
+    return eq(books.owned, true);
+};
+
 // — Helpers —
 
 function buildFilters(searchParams: SearchParams, requireImage = false) {
@@ -111,6 +120,7 @@ function buildFilters(searchParams: SearchParams, requireImage = false) {
         statusFilter(searchParams.status),
         seriesFilter(searchParams.series),
         publisherFilter(searchParams.pub),
+        posseFilter(searchParams.posse),
     ].filter(Boolean);
 }
 
@@ -215,6 +225,34 @@ export async function fetchDistinctGenres(userId: string): Promise<string[]> {
     );
 
     return result.map((r) => r.genre).filter(Boolean) as string[];
+}
+
+// — Lista de desejados —
+
+// Só livros manuais ainda não possuídos. Livros do Calibre que ficaram
+// owned=false (apagados de lá) NÃO entram aqui — "quero ter" e "tive e não
+// tenho mais" são coisas diferentes; o segundo caso é alcançável pelo
+// filtro de posse do catálogo (posse=nao-possuidos).
+export async function fetchWishlist(userId: string) {
+  return withUser(userId, (tx) =>
+    tx
+      .select({
+        id: books.id,
+        title: books.title,
+        publication_year: books.publication_year,
+        num_pages: books.num_pages,
+        createdAt: books.createdAt,
+        // array_remove tira o NULL que o leftJoin produz quando o livro não
+        // tem autor cadastrado — sem isso o array viraria [null] em vez de [].
+        authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,
+      })
+      .from(books)
+      .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+      .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
+      .where(and(eq(books.source, 'manual'), eq(books.owned, false)))
+      .groupBy(books.id)
+      .orderBy(books.createdAt)
+  );
 }
 
 export async function fetchDistinctPublishers(
