@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const run = vi.fn();
 let ultimoSet: Record<string, unknown> = {};
 
+// Estado que o banco devolveria para o livro alvo. Cada teste ajusta antes
+// de chamar a rota — é o que torna possível afirmar sobre regras que
+// dependem do status atual em vez do que o cliente mandou.
+let livroAtual: Record<string, unknown> | undefined;
+
 vi.mock('@/lib/auth-user', () => ({
   getCurrentUserId: vi.fn(async () => 'u-1'),
   AuthError: class extends Error {},
@@ -28,8 +33,16 @@ async function PATCH(id: string, body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   ultimoSet = {};
+  livroAtual = { read_status: 'não lido', owned: true, next_up: false, favorite: false };
   run.mockImplementation(async (fn: (tx: unknown) => unknown) => {
     const tx = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => (livroAtual ? [livroAtual] : []),
+          }),
+        }),
+      }),
       update: () => ({
         set: (valores: Record<string, unknown>) => {
           ultimoSet = valores;
@@ -118,5 +131,40 @@ describe('motivo do abandono', () => {
   it('aceita limpar o motivo', async () => {
     await PATCH('1', { dnfReason: null });
     expect(ultimoSet.dnf_reason).toBeNull();
+  });
+});
+
+describe('progresso não sobrescreve decisão do dono (AD-3)', () => {
+  it('livro abandonado continua abandonado ao receber progresso', async () => {
+    livroAtual = { read_status: 'abandonado', owned: true, next_up: false, favorite: false };
+    const res = await PATCH('1', { progressPercent: 50 });
+    expect(res.status).toBe(200);
+    expect(ultimoSet.progress_percent).toBe(50);
+    expect(ultimoSet.read_status).toBeUndefined();
+  });
+
+  it('livro lido continua lido ao receber progresso', async () => {
+    livroAtual = { read_status: 'lido', owned: true, next_up: false, favorite: false };
+    await PATCH('1', { progressPercent: 50 });
+    expect(ultimoSet.read_status).toBeUndefined();
+  });
+
+  it('livro não lido vira lendo ao receber progresso', async () => {
+    livroAtual = { read_status: 'não lido', owned: true, next_up: false, favorite: false };
+    await PATCH('1', { progressPercent: 50 });
+    expect(ultimoSet.read_status).toBe('lendo');
+  });
+
+  it('abandonar e gravar progresso no mesmo pedido mantém abandonado', async () => {
+    livroAtual = { read_status: 'lendo', owned: true, next_up: false, favorite: false };
+    await PATCH('1', { readStatus: 'abandonado', progressPercent: 50 });
+    expect(ultimoSet.read_status).toBe('abandonado');
+    expect(ultimoSet.progress_percent).toBe(50);
+  });
+
+  it('devolve 404 quando o livro não existe', async () => {
+    livroAtual = undefined;
+    const res = await PATCH('1', { progressPercent: 50 });
+    expect(res.status).toBe(404);
   });
 });

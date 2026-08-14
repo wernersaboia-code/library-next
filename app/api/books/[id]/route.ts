@@ -12,6 +12,12 @@ function hojeISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** O que a transação decidiu — distingue erro de regra de erro de corpo. */
+type Resultado =
+  | { kind: 'ok' }
+  | { kind: 'nao-encontrado' }
+  | { kind: 'conflito'; mensagem: string };
+
 export async function PATCH(
   req: Request, { params }: { params: Promise<{ id: string }> }
 ) {
@@ -24,6 +30,9 @@ export async function PATCH(
     const body = await req.json();
     const set: Record<string, unknown> = {};
 
+    // ─── Validação do corpo ───────────────────────────────────
+    // Só o que dá para julgar sem conhecer o livro. Regras que dependem do
+    // estado atual ficam na transação, abaixo.
     if (body.readStatus !== undefined) {
       if (!STATUS.has(body.readStatus))
         return NextResponse.json({ error: 'status inválido' }, { status: 400 });
@@ -31,8 +40,12 @@ export async function PATCH(
     }
     if (body.myRating !== undefined && body.myRating !== null) {
       const r = Number(body.myRating);
-      if (!Number.isInteger(r) || r < 1 || r > 5)
-        return NextResponse.json({ error: 'avaliação deve ser 1..5' }, { status: 400 });
+      // Múltiplos de 0,5 entre 0,5 e 5 (AD-1). `r * 2` inteiro é o teste do
+      // meio passo; 0,5 e seus múltiplos são exatos em binário.
+      if (!Number.isFinite(r) || r < 0.5 || r > 5 || !Number.isInteger(r * 2))
+        return NextResponse.json(
+          { error: 'avaliação deve ir de 0,5 a 5, de meia em meia' },
+          { status: 400 });
       set.my_rating = r;
     }
     if (body.myRating === null) set.my_rating = null;
@@ -48,10 +61,6 @@ export async function PATCH(
       }
       set.progress_percent = p;
       set.progress_updated_at = new Date();
-      // Progresso entre 1 e 99 significa leitura em andamento (AD-6). 0 não
-      // muda nada — é "comecei e não avancei" — e 100 espera o clique
-      // consciente de "Terminei hoje".
-      if (p >= 1 && p <= 99) set.read_status = 'lendo';
     }
 
     if (body.dnfReason !== undefined) {
@@ -69,14 +78,75 @@ export async function PATCH(
       set.date_finished = hojeISO();
     }
 
-    if (Object.keys(set).length === 0)
+    if (Object.keys(set).length === 0 && body.nextUp === undefined
+        && body.favorite === undefined)
       return NextResponse.json({ error: 'nada para atualizar' }, { status: 400 });
 
-    const rows = await withUser(userId, (tx) =>
-      tx.update(books).set(set).where(eq(books.id, bookId)).returning({ id: books.id }));
+    // ─── Regras que dependem do estado atual ──────────────────
+    // Lidas dentro da transação, e não recebidas do cliente: a tela pode
+    // estar mostrando um estado velho — foi exatamente assim que o abandono
+    // deixava de pegar — e decidir escrita pelo que o navegador acha que
+    // sabe volta a errar sob rede lenta.
+    const resultado = await withUser(userId, async (tx): Promise<Resultado> => {
+      const [atual] = await tx
+        .select({
+          read_status: books.read_status,
+          owned: books.owned,
+        })
+        .from(books)
+        .where(eq(books.id, bookId))
+        .limit(1);
 
-    if (rows.length === 0)
+      if (!atual) return { kind: 'nao-encontrado' };
+
+      // O status que valerá ao fim deste pedido: o enviado, se houver, ou o
+      // que já estava gravado.
+      const statusFinal = (set.read_status as string | undefined)
+        ?? atual.read_status;
+
+      // Progresso entre 1 e 99 só promove livro que ainda não foi começado
+      // (AD-3). Abandonado e lido mantêm o status. 0 não muda nada — é
+      // "comecei e não avancei" — e 100 espera o clique de "Terminei hoje".
+      const p = set.progress_percent as number | undefined;
+      if (p !== undefined && p >= 1 && p <= 99 && statusFinal === 'não lido') {
+        set.read_status = 'lendo';
+      }
+
+      if (body.nextUp !== undefined) {
+        if (body.nextUp === true && !atual.owned) {
+          return {
+            kind: 'conflito',
+            mensagem: 'Só dá para pôr na fila um livro que você tem. '
+              + 'Este ainda está em Quero ter.',
+          };
+        }
+        set.next_up = body.nextUp === true;
+      }
+
+      if (body.favorite !== undefined) {
+        if (body.favorite === true && statusFinal !== 'lido') {
+          return {
+            kind: 'conflito',
+            mensagem: 'Favorito é para livro já lido. Marque como lido primeiro.',
+          };
+        }
+        set.favorite = body.favorite === true;
+      }
+
+      // Virou lido: saiu da fila (AD-6). Não mexemos se o próprio pedido
+      // disse o que fazer com a marca — a ordem explícita do dono vence.
+      if (set.read_status === 'lido' && body.nextUp === undefined) {
+        set.next_up = false;
+      }
+
+      await tx.update(books).set(set).where(eq(books.id, bookId));
+      return { kind: 'ok' };
+    });
+
+    if (resultado.kind === 'nao-encontrado')
       return NextResponse.json({ error: 'livro não encontrado' }, { status: 404 });
+    if (resultado.kind === 'conflito')
+      return NextResponse.json({ error: resultado.mensagem }, { status: 409 });
     return NextResponse.json({ success: true });
   } catch (err) {
     return errorResponse(err, 'Erro ao atualizar o livro');
