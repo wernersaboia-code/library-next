@@ -195,7 +195,9 @@ export function WishlistClient({ initial }: WishlistClientProps) {
     }
   }
 
-  async function jaTenho(livro: LivroDesejado) {
+  // O nome anterior ("Já tenho") prometia mover o livro para o acervo, mas a
+  // ação sempre foi apagar. O rótulo agora diz o que acontece.
+  async function apagar(livro: LivroDesejado) {
     setErro(null);
     setRemovingId(livro.id);
     try {
@@ -386,7 +388,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
               key={livro.id}
               livro={livro}
               removendo={removingId === livro.id}
-              onJaTenho={() => void jaTenho(livro)}
+              onApagar={() => void apagar(livro)}
             />
           ))}
         </ul>
@@ -398,11 +400,11 @@ export function WishlistClient({ initial }: WishlistClientProps) {
 function ItemDesejado({
   livro,
   removendo,
-  onJaTenho,
+  onApagar,
 }: {
   livro: LivroDesejado;
   removendo: boolean;
-  onJaTenho: () => void;
+  onApagar: () => void;
 }) {
   const router = useRouter();
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -491,10 +493,10 @@ function ItemDesejado({
             type="button"
             variant="outline"
             size="sm"
-            onClick={onJaTenho}
+            onClick={onApagar}
             disabled={removendo}
           >
-            Já tenho
+            {removendo ? 'Apagando...' : 'Apagar'}
           </Button>
         </div>
       </div>
