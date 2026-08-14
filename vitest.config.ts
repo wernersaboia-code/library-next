@@ -19,6 +19,10 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.ts'],
     testTimeout: 30000,
+    // O `beforeAll` das suítes de banco cria um schema e aplica TODAS as
+    // migrations contra o Postgres remoto. O padrão de 10s foi ficando
+    // apertado a cada migration nova e passou a estourar na 0013.
+    hookTimeout: 60000,
     pool: 'forks',
     // Vitest 4 removed poolOptions.forks.singleFork; fileParallelism: false
     // is the supported replacement to run test files serially against the

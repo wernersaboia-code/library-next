@@ -18,6 +18,7 @@ import { TrackingControls } from './tracking-controls';
 import { NotesSection } from './notes-section';
 import { BookCollections } from './book-collections';
 import { ProgressControls } from './progress-controls';
+import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
 
 const LANGUAGES = [
@@ -110,7 +111,14 @@ export default async function Page(
             </span>
           </div>
 
-          <p className="text-gray-700 mb-6">{book.description}</p>
+          {/* A descrição do Calibre é HTML. Sanitizada no servidor
+              (lib/description.ts) porque veio de metadados de terceiros. */}
+          <div
+            className="text-gray-700 dark:text-gray-300 mb-6 space-y-3 [&_a]:underline [&_li]:ml-5 [&_li]:list-disc"
+            dangerouslySetInnerHTML={{
+              __html: sanitizeDescription(book.description),
+            }}
+          />
 
           <TrackingControls
             bookId={book.id}
