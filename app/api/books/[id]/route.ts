@@ -5,7 +5,12 @@ import { withUser } from '@/lib/db/with-user';
 import { books } from '@/lib/db/schema';
 import { errorResponse } from '@/lib/errors';
 
-const STATUS = new Set(['lido', 'lendo', 'não lido']);
+const STATUS = new Set(['lido', 'lendo', 'não lido', 'abandonado']);
+
+/** Data de hoje em ISO (só o dia) — a coluna date_finished é `date`. */
+function hojeISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export async function PATCH(
   req: Request, { params }: { params: Promise<{ id: string }> }
@@ -33,6 +38,36 @@ export async function PATCH(
     if (body.myRating === null) set.my_rating = null;
     if (body.dateStarted !== undefined) set.date_started = body.dateStarted || null;
     if (body.dateFinished !== undefined) set.date_finished = body.dateFinished || null;
+
+    if (body.progressPercent !== undefined && body.progressPercent !== null) {
+      const p = Number(body.progressPercent);
+      if (!Number.isInteger(p) || p < 0 || p > 100) {
+        return NextResponse.json(
+          { error: 'O progresso deve ser um inteiro entre 0 e 100' },
+          { status: 400 });
+      }
+      set.progress_percent = p;
+      set.progress_updated_at = new Date();
+      // Progresso entre 1 e 99 significa leitura em andamento (AD-6). 0 não
+      // muda nada — é "comecei e não avancei" — e 100 espera o clique
+      // consciente de "Terminei hoje".
+      if (p >= 1 && p <= 99) set.read_status = 'lendo';
+    }
+
+    if (body.dnfReason !== undefined) {
+      set.dnf_reason = typeof body.dnfReason === 'string' && body.dnfReason.trim()
+        ? body.dnfReason.trim()
+        : null;
+    }
+
+    // "Terminei hoje": a única ação que grava data de conclusão (AD-1).
+    // Vem depois do progresso de propósito, para vencer qualquer percentual
+    // enviado no mesmo pedido.
+    if (body.finishedToday === true) {
+      set.read_status = 'lido';
+      set.progress_percent = 100;
+      set.date_finished = hojeISO();
+    }
 
     if (Object.keys(set).length === 0)
       return NextResponse.json({ error: 'nada para atualizar' }, { status: 400 });
