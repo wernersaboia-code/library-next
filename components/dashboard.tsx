@@ -5,14 +5,24 @@ import {
   BookOpenIcon,
   BookmarkIcon,
   LibraryIcon,
+  BookXIcon,
 } from 'lucide-react';
+
+interface Periodo {
+  livros: number;
+  paginas: number;
+}
 
 interface Stats {
   totalBooks: number;
   lendo: number;
   lidos: number;
+  abandonados: number;
   paginasLidas: number;
   naoLidos: number;
+  lidosSemData: number;
+  mes: Periodo;
+  ano: Periodo;
   porAno: Record<string, number>;
 }
 
@@ -48,6 +58,12 @@ export default function Dashboard() {
       color: 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30',
     },
     {
+      label: 'Abandonados',
+      value: stats.abandonados,
+      icon: BookXIcon,
+      color: 'text-gray-600 bg-gray-200 dark:text-gray-300 dark:bg-gray-700',
+    },
+    {
       label: 'Páginas',
       value: stats.paginasLidas,
       icon: BookOpenIcon,
@@ -78,6 +94,29 @@ export default function Dashboard() {
         ))}
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+            Neste mês
+          </h3>
+          <p className="text-sm">
+            <span className="text-xl font-bold">{stats.mes.livros}</span>{' '}
+            {stats.mes.livros === 1 ? 'livro' : 'livros'} ·{' '}
+            {stats.mes.paginas.toLocaleString('pt-BR')} páginas
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+            Neste ano
+          </h3>
+          <p className="text-sm">
+            <span className="text-xl font-bold">{stats.ano.livros}</span>{' '}
+            {stats.ano.livros === 1 ? 'livro' : 'livros'} ·{' '}
+            {stats.ano.paginas.toLocaleString('pt-BR')} páginas
+          </p>
+        </div>
+      </div>
+
       {anos.length > 0 && (
         <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
@@ -91,6 +130,19 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+      )}
+
+      {stats.lidosSemData > 0 && (
+        // AD-2: sem esta linha, "Lidos: 4" ao lado de um gráfico por ano
+        // vazio parece defeito, quando é a consequência de não inventarmos
+        // datas para leituras antigas.
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {stats.lidosSemData}{' '}
+          {stats.lidosSemData === 1
+            ? 'lido sem data registrada'
+            : 'lidos sem data registrada'}
+          {' '}— não entram na contagem por período.
+        </p>
       )}
     </div>
   );
