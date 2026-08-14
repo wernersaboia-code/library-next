@@ -227,6 +227,28 @@ export async function fetchDistinctGenres(userId: string): Promise<string[]> {
     return result.map((r) => r.genre).filter(Boolean) as string[];
 }
 
+// — Lista de desejados —
+
+// Só livros manuais ainda não possuídos. Livros do Calibre que ficaram
+// owned=false (apagados de lá) NÃO entram aqui — "quero ter" e "tive e não
+// tenho mais" são coisas diferentes; o segundo caso é alcançável pelo
+// filtro de posse do catálogo (posse=nao-possuidos).
+export async function fetchWishlist(userId: string) {
+  return withUser(userId, (tx) =>
+    tx
+      .select({
+        id: books.id,
+        title: books.title,
+        publication_year: books.publication_year,
+        num_pages: books.num_pages,
+        createdAt: books.createdAt,
+      })
+      .from(books)
+      .where(and(eq(books.source, 'manual'), eq(books.owned, false)))
+      .orderBy(books.createdAt)
+  );
+}
+
 export async function fetchDistinctPublishers(
     userId: string
 ): Promise<string[]> {
