@@ -72,7 +72,8 @@ export const books = pgTable(
     title_source: text('title_source').notNull(),
     title_tsv: tsvector('title_tsv'),
 
-    my_rating: integer('my_rating'),
+    // real, não integer: meia estrela. Ver AD-1 da spec de 2026-08-14.
+    my_rating: real('my_rating'),
     date_started: date('date_started'),
     date_finished: date('date_finished'),
 
@@ -80,6 +81,11 @@ export const books = pgTable(
     calibre_modified: text('calibre_modified'),
     source: text('source').notNull().default('calibre'),
     owned: boolean('owned').notNull().default(true),
+
+    // Fila de leitura e lista curta de favoritos. São dados de leitura, não
+    // de catálogo: ficam fora de CatalogMetadata e sobrevivem ao sync.
+    next_up: boolean('next_up').notNull().default(false),
+    favorite: boolean('favorite').notNull().default(false),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
