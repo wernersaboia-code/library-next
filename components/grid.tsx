@@ -60,6 +60,7 @@ function BookLink({
         priority={priority}
         readStatus={book.read_status}
         myRating={book.my_rating}
+        owned={book.owned}
       />
     </Link>
   );

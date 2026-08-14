@@ -159,6 +159,7 @@ export async function fetchBooksWithPagination(
                 thumbhash: books.thumbhash,
                 read_status: books.read_status,
                 my_rating: books.my_rating,
+                owned: books.owned,
             })
             .from(books)
             .where(whereClause)
