@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createTestDb } from '../helpers/db';
 
 let ctx: Awaited<ReturnType<typeof createTestDb>>;
@@ -6,6 +6,11 @@ let userId: string;
 
 beforeAll(async () => {
   ctx = await createTestDb();
+  // Um único contexto para o arquivo inteiro: `doMock` só vale para imports
+  // posteriores, então trocar de banco no meio deixaria o módulo já
+  // carregado apontando para o anterior. Cada teste usa seu próprio usuário,
+  // e a RLS (forçada) faz o isolamento.
+  vi.doMock('@/lib/db/drizzle', () => ({ db: ctx.db, client: ctx.sql }));
   const [u] = await ctx.sql`insert into app_users (email) values ('rp@x.com') returning id`;
   userId = u.id;
 });
@@ -64,3 +69,4 @@ describe('trava de read_status (AD-9)', () => {
     await expect(inserir({ read_status: 'quase lido' })).rejects.toThrow(/check/i);
   });
 });
+
