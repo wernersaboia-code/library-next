@@ -5,7 +5,10 @@ export interface CalibreBookInput {
   authors: string[];
   publicationYear: number | null;
   publisher: string | null;
+  /** Nome da série, sem o número do volume. */
   series: string | null;
+  /** Volume dentro da série. Fracionário no Calibre (1.5 existe). */
+  seriesIndex: number | null;
   languageCode: string | null;
   description: string | null;
   genre: string | null;
@@ -54,6 +57,7 @@ export interface CatalogMetadata {
   publication_year: number | null;
   publisher: string | null;
   series: string | null;
+  series_index: number | null;
   language_code: string | null;
   description: string | null;
   genre: string | null;
@@ -75,6 +79,7 @@ export function metadataValues(input: CalibreBookInput): CatalogMetadata {
     publication_year: input.publicationYear,
     publisher: input.publisher,
     series: input.series,
+    series_index: input.seriesIndex,
     language_code: input.languageCode,
     description: input.description,
     genre: input.genre,

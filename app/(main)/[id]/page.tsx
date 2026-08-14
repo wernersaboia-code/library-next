@@ -4,6 +4,7 @@ import {
   GlobeIcon,
   CalendarIcon,
   ArrowLeftIcon,
+  LayersIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchBookById } from '@/lib/db/queries';
@@ -77,6 +78,15 @@ export default async function Page(
               </span>
             ))}
           </div>
+
+          {book.series && (
+            <p className="flex items-center text-sm text-gray-600 mb-4">
+              <LayersIcon className="w-4 h-4 mr-2" />
+              Série: {book.series}
+              {book.series_index !== null &&
+                `, volume ${book.series_index.toLocaleString('pt-BR')}`}
+            </p>
+          )}
 
           <div className="flex items-center mb-4">
             <StarRating rating={book.average_rating} />

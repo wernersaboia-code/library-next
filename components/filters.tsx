@@ -16,6 +16,7 @@ import {
 import { Label } from '@/components/ui/label';
 import {
   SearchParams,
+  applyFilter,
   parseSearchParams,
   stringifySearchParams,
 } from '@/lib/url-state';
@@ -72,7 +73,7 @@ function FilterBase({ searchParams }: FilterProps) {
       value: string | undefined
   ) => {
     startTransition(() => {
-      const newFilters = { ...optimisticFilters, [filterType]: value };
+      const newFilters = applyFilter(optimisticFilters, filterType, value);
       setOptimisticFilters(newFilters);
       updateURL(newFilters);
     });

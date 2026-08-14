@@ -107,11 +107,13 @@ type CatalogWithoutWatermark = Omit<CatalogMetadata, 'calibre_modified'>;
 function semWatermark(meta: CatalogMetadata): CatalogWithoutWatermark {
     const {
         title, title_source, isbn, isbn13, publication_year, publisher,
-        series, language_code, description, genre, num_pages, average_rating,
+        series, series_index, language_code, description, genre, num_pages,
+        average_rating,
     } = meta;
     return {
         title, title_source, isbn, isbn13, publication_year, publisher,
-        series, language_code, description, genre, num_pages, average_rating,
+        series, series_index, language_code, description, genre, num_pages,
+        average_rating,
     };
 }
 

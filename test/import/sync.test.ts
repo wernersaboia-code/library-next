@@ -24,11 +24,47 @@ afterAll(() => ctx.cleanup());
 function livro(over: Partial<CalibreBookInput> = {}): CalibreBookInput {
   return {
     uuid: 'u-1', lastModified: 'T1', title: 'Original', authors: ['Autor A'],
-    publicationYear: 2020, publisher: null, series: null, languageCode: 'pt',
+    publicationYear: 2020, publisher: null, series: null, seriesIndex: null,
+    languageCode: 'pt',
     description: null, genre: 'Terror', numPages: 100, averageRating: null,
     isbn: null, isbn13: null, hasCover: false, path: 'Autor A/Original (1)', ...over,
   };
 }
+
+describe('série e volume', () => {
+  it('grava o nome da série e o número do volume em colunas separadas', async () => {
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+    await syncCalibreBooks(userId, [
+      livro({ uuid: 'u-serie', title: 'Hyperion', series: 'Hyperion Cantos', seriesIndex: 2 }),
+    ], '');
+    const [b] = await ctx.sql`
+      select series, series_index from books where calibre_uuid = 'u-serie'`;
+    expect(b.series).toBe('Hyperion Cantos');
+    expect(Number(b.series_index)).toBe(2);
+  });
+
+  it('volumes da mesma série compartilham o mesmo nome', async () => {
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+    await syncCalibreBooks(userId, [
+      livro({ uuid: 'u-v1', title: 'V1', series: 'Ilium', seriesIndex: 1 }),
+      livro({ uuid: 'u-v2', title: 'V2', series: 'Ilium', seriesIndex: 2 }),
+    ], '');
+    const rows = await ctx.sql`
+      select count(*)::int as n from books where series = 'Ilium'`;
+    expect(rows[0].n).toBe(2);
+  });
+
+  it('livro sem série fica com as duas colunas nulas', async () => {
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+    await syncCalibreBooks(userId, [
+      livro({ uuid: 'u-sem-serie', title: 'Avulso', series: null, seriesIndex: null }),
+    ], '');
+    const [b] = await ctx.sql`
+      select series, series_index from books where calibre_uuid = 'u-sem-serie'`;
+    expect(b.series).toBeNull();
+    expect(b.series_index).toBeNull();
+  });
+});
 
 describe('sync do Calibre', () => {
   it('rodar duas vezes não duplica — a idempotência', async () => {

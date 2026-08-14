@@ -188,6 +188,7 @@ export async function fetchBookById(userId: string, id: string) {
                 publication_year: books.publication_year,
                 publisher: books.publisher,
                 series: books.series,
+                series_index: books.series_index,
                 image_url: books.image_url,
                 description: books.description,
                 num_pages: books.num_pages,
