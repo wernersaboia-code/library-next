@@ -215,6 +215,9 @@ export async function fetchBookById(userId: string, id: string) {
                 genre: books.genre,
                 read_status: books.read_status,
                 my_rating: books.my_rating,
+                progress_percent: books.progress_percent,
+                progress_updated_at: books.progress_updated_at,
+                dnf_reason: books.dnf_reason,
                 date_started: books.date_started,
                 date_finished: books.date_finished,
                 createdAt: books.createdAt,
@@ -287,6 +290,48 @@ export async function fetchWishlist(userId: string) {
       .groupBy(books.id)
       .orderBy(books.createdAt)
   );
+}
+
+// — Leitura em andamento —
+
+export interface ReadingNowBook {
+    id: number;
+    title: string;
+    image_url: string | null;
+    thumbhash: string | null;
+    progress_percent: number | null;
+    progress_updated_at: Date | null;
+    num_pages: number | null;
+}
+
+export const LIVROS_NA_FAIXA = 6;
+
+/**
+ * Livros em leitura, do mais recentemente atualizado ao mais antigo.
+ * Limitado (AD-5): acima disso a faixa empurraria o catálogo — que é o
+ * motivo da página existir — para fora da tela.
+ */
+export async function fetchReadingNow(
+    userId: string
+): Promise<ReadingNowBook[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select({
+                id: books.id,
+                title: books.title,
+                image_url: books.image_url,
+                thumbhash: books.thumbhash,
+                progress_percent: books.progress_percent,
+                progress_updated_at: books.progress_updated_at,
+                num_pages: books.num_pages,
+            })
+            .from(books)
+            .where(eq(books.read_status, 'lendo'))
+            // nulls last: livro marcado como lendo sem progresso registrado
+            // vai para o fim, não para o topo.
+            .orderBy(sql`${books.progress_updated_at} desc nulls last`)
+            .limit(LIVROS_NA_FAIXA)
+    );
 }
 
 export async function fetchDistinctPublishers(

@@ -13,6 +13,7 @@ export const READ_STATUS = {
   LIDO: 'lido',
   LENDO: 'lendo',
   NAO_LIDO: 'não lido',
+  ABANDONADO: 'abandonado',
 } as const;
 export type ReadStatus = (typeof READ_STATUS)[keyof typeof READ_STATUS];
 
@@ -58,6 +59,9 @@ export const books = pgTable(
     text_reviews_count: integer('text_reviews_count'),
 
     read_status: text('read_status').default('não lido').notNull(),
+    progress_percent: integer('progress_percent'),
+    progress_updated_at: timestamp('progress_updated_at', { withTimezone: true }),
+    dnf_reason: text('dnf_reason'),
 
     image_url: text('image_url'),
     thumbhash: text('thumbhash'),
