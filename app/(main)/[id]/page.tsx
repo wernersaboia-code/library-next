@@ -17,6 +17,7 @@ import { notFound } from 'next/navigation';
 import { TrackingControls } from './tracking-controls';
 import { NotesSection } from './notes-section';
 import { BookCollections } from './book-collections';
+import { ProgressControls } from './progress-controls';
 import { fetchCollections } from '@/lib/db/collections';
 
 const LANGUAGES = [
@@ -118,6 +119,19 @@ export default async function Page(
               dateStarted: book.date_started,
               dateFinished: book.date_finished,
               myRating: book.my_rating,
+            }}
+          />
+
+          <ProgressControls
+            bookId={book.id}
+            numPages={book.num_pages}
+            initial={{
+              readStatus: book.read_status,
+              progressPercent: book.progress_percent,
+              progressUpdatedAt: book.progress_updated_at
+                ? book.progress_updated_at.toISOString()
+                : null,
+              dnfReason: book.dnf_reason,
             }}
           />
 
