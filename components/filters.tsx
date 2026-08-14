@@ -37,6 +37,7 @@ const READ_STATUS_OPTIONS = [
   { value: 'lido', label: '✅ Lido' },
   { value: 'lendo', label: '📖 Lendo' },
   { value: 'não lido', label: '🕐 Não lido' },
+  { value: 'abandonado', label: '🚫 Abandonado' },
 ];
 
 const SERIES_OPTIONS = [

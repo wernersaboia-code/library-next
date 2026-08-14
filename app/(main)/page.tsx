@@ -5,8 +5,10 @@ import Dashboard from '@/components/dashboard';
 import {
   estimateTotalBooks,
   fetchBooksWithPagination,
+  fetchReadingNow,
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
+import { ReadingStrip } from '@/components/reading-strip';
 import { parseSearchParams } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollections } from '@/lib/db/collections';
@@ -20,10 +22,11 @@ export default async function Page(
   const parsedSearchParams = parseSearchParams(searchParams);
   const userId = await getCurrentUserId();
 
-  const [books, estimatedTotal, bibliotecas] = await Promise.all([
+  const [books, estimatedTotal, bibliotecas, lendoAgora] = await Promise.all([
     fetchBooksWithPagination(userId, parsedSearchParams),
     estimateTotalBooks(userId, parsedSearchParams),
     fetchCollections(userId),
+    fetchReadingNow(userId),
   ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
@@ -36,6 +39,7 @@ export default async function Page(
       </Suspense>
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">
+          <ReadingStrip livros={lendoAgora} />
           <BooksGrid
             books={books}
             searchParams={parsedSearchParams}

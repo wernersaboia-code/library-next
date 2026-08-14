@@ -3,6 +3,7 @@ import { StarIcon } from 'lucide-react';
 const STATUS_LABEL: Record<string, { texto: string; classe: string }> = {
   lido: { texto: 'Lido', classe: 'bg-emerald-600' },
   lendo: { texto: 'Lendo', classe: 'bg-amber-500' },
+  abandonado: { texto: 'Abandonado', classe: 'bg-gray-600' },
 };
 
 export function CoverBadges({
