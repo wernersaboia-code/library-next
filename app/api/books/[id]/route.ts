@@ -47,3 +47,36 @@ export async function PATCH(
     return errorResponse(err, 'Erro ao atualizar o livro');
   }
 }
+
+export async function DELETE(
+  _req: Request, { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const userId = await getCurrentUserId();
+    const bookId = Number((await params).id);
+    if (!Number.isInteger(bookId) || bookId <= 0) {
+      return NextResponse.json({ error: 'id inválido' }, { status: 400 });
+    }
+
+    const resultado = await withUser(userId, async (tx) => {
+      const [livro] = await tx.select({ source: books.source })
+        .from(books).where(eq(books.id, bookId)).limit(1);
+      if (!livro) return 'nao-encontrado' as const;
+      if (livro.source !== 'manual') return 'do-calibre' as const;
+      await tx.delete(books).where(eq(books.id, bookId));
+      return 'apagado' as const;
+    });
+
+    if (resultado === 'nao-encontrado') {
+      return NextResponse.json({ error: 'Livro não encontrado' }, { status: 404 });
+    }
+    if (resultado === 'do-calibre') {
+      return NextResponse.json({
+        error: 'Este livro veio do Calibre. Remova-o da biblioteca do Calibre e sincronize.',
+      }, { status: 409 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return errorResponse(err, 'Erro ao remover o livro');
+  }
+}
