@@ -33,6 +33,23 @@ export function parseSearchParams(
   };
 }
 
+/**
+ * Aplica um filtro e volta para a primeira página.
+ *
+ * Sem o descarte de `page`, filtrar estando numa página adiantada mantinha o
+ * offset antigo: o catálogo vinha vazio mesmo havendo resultados — filtrar
+ * "Lido" na página 5 pedia os livros 113 em diante de um conjunto de 3.
+ */
+export function applyFilter(
+    params: SearchParams,
+    key: keyof SearchParams,
+    value: string | undefined
+): SearchParams {
+  const next = { ...params, [key]: value };
+  delete next.page;
+  return next;
+}
+
 export function stringifySearchParams(params: SearchParams): string {
   const urlParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
