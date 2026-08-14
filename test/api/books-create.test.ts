@@ -42,6 +42,17 @@ describe('POST /api/books', () => {
   it('recusa numPages negativo', async () => {
     expect((await POST({ title: 'X', numPages: -3 })).status).toBe(400);
   });
+
+  it('aceita nota e votos vindos da busca externa', async () => {
+    const res = await POST({
+      title: 'Da Busca', averageRating: 4.32, ratingsCount: 1847, owned: false,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('recusa averageRating fora de 0..5', async () => {
+    expect((await POST({ title: 'X', averageRating: 9 })).status).toBe(400);
+  });
 });
 
 describe('DELETE /api/books/[id]', () => {

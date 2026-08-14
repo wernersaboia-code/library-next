@@ -244,6 +244,10 @@ export async function fetchWishlist(userId: string) {
         publication_year: books.publication_year,
         num_pages: books.num_pages,
         createdAt: books.createdAt,
+        image_url: books.image_url,
+        thumbhash: books.thumbhash,
+        average_rating: books.average_rating,
+        ratings_count: books.ratings_count,
         // array_remove tira o NULL que o leftJoin produz quando o livro não
         // tem autor cadastrado — sem isso o array viraria [null] em vez de [].
         authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,

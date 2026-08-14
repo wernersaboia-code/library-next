@@ -33,6 +33,23 @@ export async function POST(req: Request) {
         { error: 'Ano de publicação deve ser um inteiro positivo' }, { status: 400 });
     }
 
+    // average_rating é decimal(3,2) na escala 0..5
+    const avaliacaoExterna = body.averageRating;
+    let averageRating: string | null = null;
+    if (avaliacaoExterna !== undefined && avaliacaoExterna !== null) {
+      const n = Number(avaliacaoExterna);
+      if (!Number.isFinite(n) || n < 0 || n > 5) {
+        return NextResponse.json(
+          { error: 'A nota deve estar entre 0 e 5' }, { status: 400 });
+      }
+      averageRating = n.toFixed(2);
+    }
+    const ratingsCount = inteiroPositivo(body.ratingsCount);
+    if (ratingsCount === 'invalido') {
+      return NextResponse.json(
+        { error: 'Número de votos inválido' }, { status: 400 });
+    }
+
     const nomes: string[] = Array.isArray(body.authors)
       ? body.authors.filter((a: unknown): a is string => typeof a === 'string' && a.trim() !== '')
       : [];
@@ -48,6 +65,8 @@ export async function POST(req: Request) {
         publication_year: publicationYear,
         publisher: typeof body.publisher === 'string' ? body.publisher : null,
         genre: typeof body.genre === 'string' ? body.genre : null,
+        average_rating: averageRating,
+        ratings_count: ratingsCount,
       }).returning({ id: books.id });
 
       for (const nome of nomes) {
