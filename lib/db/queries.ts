@@ -220,6 +220,17 @@ export async function fetchBookById(userId: string, id: string) {
                 createdAt: books.createdAt,
                 authors: sql<string[]>`array_agg(${authors.name})`,
                 thumbhash: books.thumbhash,
+                // Subconsulta em vez de mais um leftJoin: a query já agrega
+                // autores com array_agg, e um segundo join multiplicaria as
+                // linhas, duplicando os autores de quem está em duas
+                // bibliotecas.
+                collections: sql<{ id: number; name: string }[]>`coalesce((
+                    select json_agg(json_build_object('id', c.id, 'name', c.name)
+                                    order by c.name)
+                    from book_collections bc
+                    join collections c on c.id = bc.collection_id
+                    where bc.book_id = ${books.id}
+                ), '[]'::json)`,
             })
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))

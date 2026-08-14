@@ -117,3 +117,22 @@ describe('filtro do catálogo por biblioteca', () => {
     expect(rows.length).toBeGreaterThan(0);
   });
 });
+
+describe('bibliotecas na página do livro', () => {
+  it('fetchBookById traz as bibliotecas do livro', async () => {
+    const [b] = await ctx.sql`
+      select id from books where title = 'It' limit 1`;
+    const { fetchBookById } = await import('@/lib/db/queries');
+    const livro = await fetchBookById(userId, String(b.id));
+    expect(livro.collections).toEqual([{ id: terror, name: 'Terror' }]);
+  });
+
+  it('livro sem biblioteca devolve lista vazia, não null', async () => {
+    const [b] = await ctx.sql`
+      insert into books (user_id, title, title_source)
+      values (${userId}, 'Solto', 'Solto') returning id`;
+    const { fetchBookById } = await import('@/lib/db/queries');
+    const livro = await fetchBookById(userId, String(b.id));
+    expect(livro.collections).toEqual([]);
+  });
+});
