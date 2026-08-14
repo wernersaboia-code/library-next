@@ -347,3 +347,47 @@ export async function fetchDistinctPublishers(
 
     return result.map((r) => r.publisher).filter(Boolean) as string[];
 }
+
+// — Estantes de fila e de favoritos —
+
+export interface LivroDaEstante {
+    id: number;
+    title: string;
+    image_url: string | null;
+    thumbhash: string | null;
+    read_status: string;
+    my_rating: number | null;
+    owned: boolean;
+}
+
+const colunasDaEstante = {
+    id: books.id,
+    title: books.title,
+    image_url: books.image_url,
+    thumbhash: books.thumbhash,
+    read_status: books.read_status,
+    my_rating: books.my_rating,
+    owned: books.owned,
+};
+
+/** A fila de leitura: o que o dono decidiu ler antes dos outros. */
+export async function fetchNextUp(userId: string): Promise<LivroDaEstante[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select(colunasDaEstante)
+            .from(books)
+            .where(eq(books.next_up, true))
+            .orderBy(books.title)
+    );
+}
+
+/** A lista curta: lidos que superaram as expectativas. */
+export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select(colunasDaEstante)
+            .from(books)
+            .where(eq(books.favorite, true))
+            .orderBy(books.title)
+    );
+}
