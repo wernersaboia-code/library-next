@@ -142,6 +142,8 @@ export async function fetchBooksWithPagination(
                 title: books.title,
                 image_url: books.image_url,
                 thumbhash: books.thumbhash,
+                read_status: books.read_status,
+                my_rating: books.my_rating,
             })
             .from(books)
             .where(whereClause)

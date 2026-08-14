@@ -58,6 +58,8 @@ function BookLink({
         title={book.title}
         thumbhash={book.thumbhash}
         priority={priority}
+        readStatus={book.read_status}
+        myRating={book.my_rating}
       />
     </Link>
   );
