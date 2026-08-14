@@ -51,11 +51,19 @@ const POSSE_OPTIONS = [
   { value: 'todos', label: 'Todos' },
 ];
 
+export interface BibliotecaOption {
+  id: number;
+  name: string;
+}
+
 interface FilterProps {
   searchParams: URLSearchParams;
 }
 
-function FilterBase({ searchParams }: FilterProps) {
+function FilterBase({
+  searchParams,
+  bibliotecas = [],
+}: FilterProps & { bibliotecas?: BibliotecaOption[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -235,6 +243,29 @@ function FilterBase({ searchParams }: FilterProps) {
               </Select>
             </div>
 
+            {/* Biblioteca */}
+            {bibliotecas.length > 0 && (
+              <div>
+                <Label htmlFor="biblioteca">Biblioteca</Label>
+                <Select
+                    value={optimisticFilters.bib ?? 'todos'}
+                    onValueChange={(value) => handleSelectChange('bib', value)}
+                >
+                  <SelectTrigger id="biblioteca" className="mt-2">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {bibliotecas.map((b) => (
+                        <SelectItem key={b.id} value={String(b.id)}>
+                          {b.name}
+                        </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Posse */}
             <div>
               <Label htmlFor="posse">Posse</Label>
@@ -277,7 +308,7 @@ export function FilterFallback() {
   return <FilterBase searchParams={new URLSearchParams()} />;
 }
 
-export function Filter() {
+export function Filter({ bibliotecas }: { bibliotecas?: BibliotecaOption[] }) {
   const searchParams = useSearchParams();
-  return <FilterBase searchParams={searchParams} />;
+  return <FilterBase searchParams={searchParams} bibliotecas={bibliotecas} />;
 }

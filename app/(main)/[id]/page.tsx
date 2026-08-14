@@ -16,6 +16,8 @@ import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
 import { TrackingControls } from './tracking-controls';
 import { NotesSection } from './notes-section';
+import { BookCollections } from './book-collections';
+import { fetchCollections } from '@/lib/db/collections';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -43,7 +45,10 @@ export default async function Page(
   const searchParams = await props.searchParams;
   const params = await props.params;
   const userId = await getCurrentUserId();
-  const book = await fetchBookById(userId, params.id);
+  const [book, bibliotecas] = await Promise.all([
+    fetchBookById(userId, params.id),
+    fetchCollections(userId),
+  ]);
   if (!book) notFound();
 
   return (
@@ -87,6 +92,12 @@ export default async function Page(
                 `, volume ${book.series_index.toLocaleString('pt-BR')}`}
             </p>
           )}
+
+          <BookCollections
+            bookId={book.id}
+            atuais={book.collections}
+            todas={bibliotecas.map((b) => ({ id: b.id, name: b.name }))}
+          />
 
           <div className="flex items-center mb-4">
             <StarRating rating={book.average_rating} />

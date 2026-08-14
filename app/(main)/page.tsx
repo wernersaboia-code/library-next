@@ -9,6 +9,7 @@ import {
 } from '@/lib/db/queries';
 import { parseSearchParams } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
+import { fetchCollections } from '@/lib/db/collections';
 
 export default async function Page(
   props: {
@@ -19,9 +20,10 @@ export default async function Page(
   const parsedSearchParams = parseSearchParams(searchParams);
   const userId = await getCurrentUserId();
 
-  const [books, estimatedTotal] = await Promise.all([
+  const [books, estimatedTotal, bibliotecas] = await Promise.all([
     fetchBooksWithPagination(userId, parsedSearchParams),
     estimateTotalBooks(userId, parsedSearchParams),
+    fetchCollections(userId),
   ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
@@ -34,7 +36,11 @@ export default async function Page(
       </Suspense>
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">
-          <BooksGrid books={books} searchParams={parsedSearchParams} />
+          <BooksGrid
+            books={books}
+            searchParams={parsedSearchParams}
+            bibliotecas={bibliotecas}
+          />
         </div>
       </div>
       <div className="mt-auto p-4 border-t">

@@ -1,6 +1,6 @@
 // lib/db/queries.ts
 import { sql, and, gte, eq, lte, not, isNull, like } from 'drizzle-orm';
-import { books, authors, bookToAuthor } from './schema';
+import { books, authors, bookToAuthor, bookCollections } from './schema';
 import { SearchParams } from '@/lib/url-state';
 import { withUser } from './with-user';
 
@@ -105,6 +105,20 @@ const posseFilter = (posse?: string) => {
     return eq(books.owned, true);
 };
 
+// Filtra por pertencer a uma biblioteca. `exists` em vez de join: um join
+// multiplicaria linhas se o livro estivesse em várias bibliotecas, e a
+// listagem passaria a repetir capas.
+const bibFilter = (bib?: string) => {
+    if (!bib) return undefined;
+    const id = Number(bib);
+    // Id inválido vira "sem filtro": um link torto não deve quebrar a página.
+    if (!Number.isInteger(id) || id <= 0) return undefined;
+    return sql`exists (
+        select 1 from ${bookCollections} bc
+        where bc.book_id = ${books.id} and bc.collection_id = ${id}
+    )`;
+};
+
 // — Helpers —
 
 function buildFilters(searchParams: SearchParams, requireImage = false) {
@@ -121,6 +135,7 @@ function buildFilters(searchParams: SearchParams, requireImage = false) {
         seriesFilter(searchParams.series),
         publisherFilter(searchParams.pub),
         posseFilter(searchParams.posse),
+        bibFilter(searchParams.bib),
     ].filter(Boolean);
 }
 
@@ -144,6 +159,7 @@ export async function fetchBooksWithPagination(
                 thumbhash: books.thumbhash,
                 read_status: books.read_status,
                 my_rating: books.my_rating,
+                owned: books.owned,
             })
             .from(books)
             .where(whereClause)
@@ -204,6 +220,17 @@ export async function fetchBookById(userId: string, id: string) {
                 createdAt: books.createdAt,
                 authors: sql<string[]>`array_agg(${authors.name})`,
                 thumbhash: books.thumbhash,
+                // Subconsulta em vez de mais um leftJoin: a query já agrega
+                // autores com array_agg, e um segundo join multiplicaria as
+                // linhas, duplicando os autores de quem está em duas
+                // bibliotecas.
+                collections: sql<{ id: number; name: string }[]>`coalesce((
+                    select json_agg(json_build_object('id', c.id, 'name', c.name)
+                                    order by c.name)
+                    from book_collections bc
+                    join collections c on c.id = bc.collection_id
+                    where bc.book_id = ${books.id}
+                ), '[]'::json)`,
             })
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))

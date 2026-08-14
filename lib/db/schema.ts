@@ -102,6 +102,38 @@ export const bookToAuthor = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.bookId, t.authorId] }) })
 );
 
+export const collections = pgTable(
+  'collections',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id').notNull()
+      .references(() => appUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow().notNull(),
+  },
+  (t) => ({ userIdx: index('idx_collections_user').on(t.userId) })
+);
+
+// O índice único de (user_id, lower(name)) vive só na migration: índice
+// sobre expressão não é expressável de forma confiável aqui, e as migrations
+// deste projeto são escritas à mão. O 409 de nome repetido depende dele.
+export const bookCollections = pgTable(
+  'book_collections',
+  {
+    bookId: integer('book_id').notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    collectionId: integer('collection_id').notNull()
+      .references(() => collections.id, { onDelete: 'cascade' }),
+    addedAt: timestamp('added_at', { withTimezone: true })
+      .defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.collectionId, t.bookId] }),
+    bookIdx: index('idx_book_collections_book').on(t.bookId),
+  })
+);
+
 export const highlights = pgTable(
   'highlights',
   {
@@ -136,11 +168,12 @@ export const highlights = pgTable(
 export type SelectBook = typeof books.$inferSelect;
 export type Book = Pick<
   SelectBook,
-  'id' | 'title' | 'image_url' | 'thumbhash' | 'read_status' | 'my_rating'
+  'id' | 'title' | 'image_url' | 'thumbhash' | 'read_status' | 'my_rating' | 'owned'
 >;
 export type SelectAuthor = typeof authors.$inferSelect;
 export type Author = Pick<SelectAuthor, 'id' | 'name'>;
 export type SelectHighlight = typeof highlights.$inferSelect;
+export type SelectCollection = typeof collections.$inferSelect;
 
 export const booksRelations = relations(books, ({ many }) => ({
   bookToAuthor: many(bookToAuthor),
