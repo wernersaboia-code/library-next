@@ -31,6 +31,18 @@ export default function NavBar() {
         Bibliotecas
       </Link>
       <Link
+        href="/proximos"
+        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+      >
+        Próximos
+      </Link>
+      <Link
+        href="/favoritos"
+        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+      >
+        Favoritos
+      </Link>
+      <Link
         href="/desejados"
         className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
       >
