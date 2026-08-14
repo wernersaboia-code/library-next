@@ -12,6 +12,7 @@ interface LivroDesejado {
   publication_year: number | null;
   num_pages: number | null;
   createdAt: Date | string;
+  authors: string[] | null;
 }
 
 interface WishlistClientProps {
@@ -75,17 +76,23 @@ export function WishlistClient({ initial }: WishlistClientProps) {
     setErro(null);
     setRemovingId(livro.id);
     try {
-      let quantidadeNotas = 0;
+      // Ação destrutiva e irreversível: se não conseguirmos saber se há
+      // notas, falhamos fechado (abortamos) em vez de apagar sem avisar.
+      let notesRes: Response;
       try {
-        const notesRes = await fetch(`/api/books/${livro.id}/notes`);
-        if (notesRes.ok) {
-          const notas = (await notesRes.json()) as Note[];
-          quantidadeNotas = notas.length;
-        }
+        notesRes = await fetch(`/api/books/${livro.id}/notes`);
       } catch {
-        // Se a checagem de notas falhar, seguimos sem confirmação extra —
-        // a falha de rede não pode impedir o fluxo principal.
+        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        return;
       }
+
+      if (!notesRes.ok) {
+        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        return;
+      }
+
+      const notas = (await notesRes.json()) as Note[];
+      const quantidadeNotas = notas.length;
 
       if (quantidadeNotas > 0) {
         const confirmado = confirm(
@@ -178,7 +185,13 @@ export function WishlistClient({ initial }: WishlistClientProps) {
               <div>
                 <p className="font-medium">{livro.title}</p>
                 <p className="text-sm text-gray-500">
-                  {[livro.publication_year, livro.num_pages ? `${livro.num_pages} páginas` : null]
+                  {[
+                    livro.authors && livro.authors.length > 0
+                      ? livro.authors.join(', ')
+                      : null,
+                    livro.publication_year,
+                    livro.num_pages ? `${livro.num_pages} páginas` : null,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </p>

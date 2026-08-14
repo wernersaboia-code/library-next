@@ -242,9 +242,15 @@ export async function fetchWishlist(userId: string) {
         publication_year: books.publication_year,
         num_pages: books.num_pages,
         createdAt: books.createdAt,
+        // array_remove tira o NULL que o leftJoin produz quando o livro não
+        // tem autor cadastrado — sem isso o array viraria [null] em vez de [].
+        authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,
       })
       .from(books)
+      .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+      .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
       .where(and(eq(books.source, 'manual'), eq(books.owned, false)))
+      .groupBy(books.id)
       .orderBy(books.createdAt)
   );
 }

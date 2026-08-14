@@ -11,9 +11,18 @@ beforeAll(async () => {
   userId = u.id;
 
   // desejado: manual, não possuído — deve aparecer
+  const [livroComAutor] = await ctx.sql`
+    insert into books (user_id, title, title_source, source, owned)
+    values (${userId}, 'Quero Ter', 'Quero Ter', 'manual', false) returning id`;
+  const [autor] = await ctx.sql`
+    insert into authors (id, name) values ('autora-exemplo', 'Autora Exemplo') returning id`;
+  await ctx.sql`
+    insert into book_to_author (book_id, author_id)
+    values (${livroComAutor.id}, ${autor.id})`;
+  // desejado sem autor cadastrado — não pode quebrar a agregação
   await ctx.sql`
     insert into books (user_id, title, title_source, source, owned)
-    values (${userId}, 'Quero Ter', 'Quero Ter', 'manual', false)`;
+    values (${userId}, 'Sem Autor', 'Sem Autor', 'manual', false)`;
   // manual mas já possuído — não é desejo, não deve aparecer
   await ctx.sql`
     insert into books (user_id, title, title_source, source, owned)
@@ -40,8 +49,22 @@ describe('fetchWishlist', () => {
   it('lista só livros manuais e não possuídos', async () => {
     const { fetchWishlist } = await import('@/lib/db/queries');
     const rows = await fetchWishlist(userId);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].title).toBe('Quero Ter');
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.title).sort()).toEqual(['Quero Ter', 'Sem Autor'].sort());
+  });
+
+  it('traz o nome do autor quando o livro tem autor cadastrado', async () => {
+    const { fetchWishlist } = await import('@/lib/db/queries');
+    const rows = await fetchWishlist(userId);
+    const livro = rows.find((r) => r.title === 'Quero Ter');
+    expect(livro?.authors).toEqual(['Autora Exemplo']);
+  });
+
+  it('não quebra quando o livro não tem autor cadastrado', async () => {
+    const { fetchWishlist } = await import('@/lib/db/queries');
+    const rows = await fetchWishlist(userId);
+    const livro = rows.find((r) => r.title === 'Sem Autor');
+    expect(livro?.authors).toEqual([]);
   });
 
   it('ignora livros do Calibre mesmo quando owned=false', async () => {
