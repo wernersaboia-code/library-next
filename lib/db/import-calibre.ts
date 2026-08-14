@@ -367,6 +367,22 @@ export async function syncCalibreBooks(
         livros.map((l) => l.uuid)
     );
 
+    // Logo após um `db:migrate` (que zera `books`) seguido do import, o
+    // planner ainda não tem estatísticas de `books` — `estimateTotalBooks`
+    // (lib/db/queries.ts) usa `EXPLAIN` para estimar o total do catálogo, e
+    // sem `ANALYZE` essa estimativa fica muito abaixo do real (ex.: ~130 em
+    // vez de 1318). Roda fora de transação/`withUser`: `ANALYZE` não se
+    // beneficia de `set_local` e não deve competir com o commit dos dados.
+    // Falha aqui não pode derrubar o sync — os dados já estão gravados — por
+    // isso fica isolado em try/catch com apenas um aviso.
+    try {
+        await client`analyze books`;
+    } catch (error) {
+        console.warn('[sync] falha ao executar ANALYZE em books', {
+            erro: error instanceof Error ? error.message : String(error),
+        });
+    }
+
     return resumo;
 }
 
@@ -380,6 +396,27 @@ async function main() {
 
     const livros = await readCalibreLibrary(calibrePath);
     console.log(`📖 ${livros.length} livros encontrados no Calibre\n`);
+
+    // Guarda-corpo: uma lista vazia faz `syncCalibreBooks` marcar TODOS os
+    // livros `source='calibre'` como não possuídos (comportamento
+    // intencional da função — ver `reconcileOwnership` — e coberto por
+    // testes). Aqui em `main()`, que roda direto na mão do usuário, uma
+    // lista vazia é muito mais provável de ser um caminho errado do que uma
+    // biblioteca esvaziada de propósito — por isso aborta a menos que
+    // `--permitir-vazio` seja passado explicitamente.
+    if (livros.length === 0 && argValue('--permitir-vazio') === undefined) {
+        console.error(
+            '⚠️  Nenhum livro encontrado no caminho informado ' +
+                `("${calibrePath}").\n` +
+                'Continuar assim marcaria TODOS os livros já sincronizados ' +
+                'do Calibre como não possuídos (owned=false).\n' +
+                'Verifique o caminho (--path=... ou CALIBRE_PATH). Se a ' +
+                'intenção é mesmo esvaziar a biblioteca, rode de novo com ' +
+                '--permitir-vazio.'
+        );
+        process.exitCode = 1;
+        return;
+    }
 
     const resumo = await syncCalibreBooks(userId, livros, calibrePath);
 
