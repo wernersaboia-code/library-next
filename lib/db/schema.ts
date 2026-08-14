@@ -65,6 +65,9 @@ export const books = pgTable(
 
     image_url: text('image_url'),
     thumbhash: text('thumbhash'),
+    // sha256 da capa que está no Storage: evita reenviar imagem idêntica
+    // quando só o metadado mudou no Calibre.
+    cover_hash: text('cover_hash'),
 
     title_source: text('title_source').notNull(),
     title_tsv: tsvector('title_tsv'),

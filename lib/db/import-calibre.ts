@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import * as ThumbHash from 'thumbhash';
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 import { client, db } from './drizzle';
 import { books, authors, bookToAuthor, appUsers } from './schema';
 import { withUser } from './with-user';
@@ -155,12 +156,31 @@ async function syncCover(
             });
             return false;
         }
+
+        const hash = createHash('sha256').update(buf).digest('hex');
+        const [atual] = await withUser(userId, (tx) =>
+            tx
+                .select({
+                    cover_hash: books.cover_hash,
+                    image_url: books.image_url,
+                })
+                .from(books)
+                .where(eq(books.id, bookId))
+                .limit(1)
+        );
+
+        // Capa byte a byte idêntica à que já está no Storage: não há o que
+        // enviar. Editar metadados em lote no Calibre marca centenas de
+        // livros como modificados sem tocar nas capas — sem esta guarda,
+        // cada um desses custava um upload inútil.
+        if (atual?.cover_hash === hash && atual.image_url) return true;
+
         const thumbhash = await generateThumbHash(buf);
         const imageUrl = await uploadCover(userId, bookId, buf, 'jpg');
         await withUser(userId, (tx) =>
             tx
                 .update(books)
-                .set({ image_url: imageUrl, thumbhash })
+                .set({ image_url: imageUrl, thumbhash, cover_hash: hash })
                 .where(and(eq(books.id, bookId), eq(books.source, 'calibre')))
         );
         return true;

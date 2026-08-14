@@ -99,6 +99,13 @@
       "when": 1786760000000,
       "tag": "0013_reading_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786770000000,
+      "tag": "0014_cover_hash",
+      "breakpoints": true
     }
   ]
 }

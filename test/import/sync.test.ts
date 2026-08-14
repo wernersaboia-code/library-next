@@ -162,6 +162,69 @@ describe('sync do Calibre', () => {
     expect(manualDepois.owned).toBe(false); // ramo de owned=true não atinge manuais
   });
 
+  it('metadado alterado com a MESMA capa não reenvia a imagem', async () => {
+    // O caso real: uma edição em lote no Calibre tocou 453 livros, e o sync
+    // reenviou 453 capas idênticas ao Storage.
+    const calibrePath = fs.mkdtempSync(path.join(os.tmpdir(), 'calibre-'));
+    const bookDir = path.join(calibrePath, 'Autor A', 'Original (1)');
+    fs.mkdirSync(bookDir, { recursive: true });
+    fs.writeFileSync(path.join(bookDir, 'cover.jpg'), Buffer.from('capa-identica'));
+
+    const { uploadCover } = await import('@/lib/storage');
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+
+    await syncCalibreBooks(
+      userId,
+      [livro({ uuid: 'u-hash', hasCover: true, lastModified: 'T1' })],
+      calibrePath
+    );
+    vi.mocked(uploadCover).mockClear();
+
+    const r = await syncCalibreBooks(
+      userId,
+      [livro({
+        uuid: 'u-hash', hasCover: true, lastModified: 'T2',
+        title: 'Título Corrigido',
+      })],
+      calibrePath
+    );
+
+    expect(r.atualizados).toBe(1);
+    expect(uploadCover).not.toHaveBeenCalled();
+
+    const [b] = await ctx.sql`
+      select title, image_url from books where calibre_uuid = 'u-hash'`;
+    expect(b.title).toBe('Título Corrigido');   // o metadado foi atualizado
+    expect(b.image_url).toBe('https://cdn/c.jpg'); // e a capa continua lá
+  });
+
+  it('capa trocada no Calibre É reenviada', async () => {
+    const calibrePath = fs.mkdtempSync(path.join(os.tmpdir(), 'calibre-'));
+    const bookDir = path.join(calibrePath, 'Autor A', 'Original (1)');
+    fs.mkdirSync(bookDir, { recursive: true });
+    const capa = path.join(bookDir, 'cover.jpg');
+    fs.writeFileSync(capa, Buffer.from('capa-antiga'));
+
+    const { uploadCover } = await import('@/lib/storage');
+    const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
+
+    await syncCalibreBooks(
+      userId,
+      [livro({ uuid: 'u-capa-nova', hasCover: true, lastModified: 'T1' })],
+      calibrePath
+    );
+    vi.mocked(uploadCover).mockClear();
+
+    fs.writeFileSync(capa, Buffer.from('capa-completamente-diferente'));
+    await syncCalibreBooks(
+      userId,
+      [livro({ uuid: 'u-capa-nova', hasCover: true, lastModified: 'T2' })],
+      calibrePath
+    );
+
+    expect(uploadCover).toHaveBeenCalledTimes(1);
+  });
+
   it('capa que falha não avança o watermark — próximo run reprocessa', async () => {
     const { syncCalibreBooks } = await import('@/lib/db/import-calibre');
 
