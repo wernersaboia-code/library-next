@@ -2,7 +2,7 @@
 
 import Form from 'next/form';
 import { useFormStatus } from 'react-dom';
-import { useRef, use, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useSearchParams } from 'next/navigation';
@@ -11,7 +11,7 @@ import { useBackpressure } from '@/lib/use-backpressure';
 function SearchBase({ initialQuery }: { initialQuery: string }) {
   const [inputValue, setInputValue] = useState(initialQuery);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { triggerUpdate, shouldSuspend, formRef } = useBackpressure();
+  const { triggerUpdate, formRef } = useBackpressure();
 
   async function handleSubmit(formData: FormData) {
     const query = formData.get('search') as string;
@@ -34,10 +34,6 @@ function SearchBase({ initialQuery }: { initialQuery: string }) {
       );
     }
   }, []);
-
-  if (shouldSuspend) {
-    use(Promise.resolve());
-  }
 
   return (
     <Form
