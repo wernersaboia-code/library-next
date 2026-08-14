@@ -16,6 +16,14 @@ export default function NavBar() {
 
   return (
     <nav className="flex items-center justify-end gap-4 mb-2">
+      {/* Primeiro item: sem ele não havia como voltar ao catálogo de dentro
+          de /desejados nem de /settings. */}
+      <Link
+        href="/"
+        className="mr-auto text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+      >
+        Acervo
+      </Link>
       <Link
         href="/desejados"
         className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
