@@ -58,3 +58,20 @@ describe('schema de sync e posse', () => {
     expect(String(idx.indexdef)).toMatch(/where .*calibre_uuid.*is not null/i);
   });
 });
+
+describe('o sync não escreve dados de leitura', () => {
+  it('metadataValues não devolve next_up nem favorite', async () => {
+    const { metadataValues } = await import('@/lib/db/calibre-sync');
+    const chaves = Object.keys(metadataValues({
+      uuid: 'u', lastModified: '2026-01-01', title: 'T', authors: [],
+      publicationYear: null, publisher: null, series: null, seriesIndex: null,
+      languageCode: null, description: null, genre: null, numPages: null,
+      averageRating: null, isbn: null, isbn13: null, hasCover: false, path: 'T',
+    }));
+
+    expect(chaves).not.toContain('next_up');
+    expect(chaves).not.toContain('favorite');
+    expect(chaves).not.toContain('my_rating');
+    expect(chaves).not.toContain('read_status');
+  });
+});
