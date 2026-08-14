@@ -160,6 +160,8 @@ export async function fetchBooksWithPagination(
                 read_status: books.read_status,
                 my_rating: books.my_rating,
                 owned: books.owned,
+                next_up: books.next_up,
+                favorite: books.favorite,
             })
             .from(books)
             .where(whereClause)
@@ -215,6 +217,9 @@ export async function fetchBookById(userId: string, id: string) {
                 genre: books.genre,
                 read_status: books.read_status,
                 my_rating: books.my_rating,
+                owned: books.owned,
+                next_up: books.next_up,
+                favorite: books.favorite,
                 progress_percent: books.progress_percent,
                 progress_updated_at: books.progress_updated_at,
                 dnf_reason: books.dnf_reason,

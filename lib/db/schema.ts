@@ -181,7 +181,8 @@ export const highlights = pgTable(
 export type SelectBook = typeof books.$inferSelect;
 export type Book = Pick<
   SelectBook,
-  'id' | 'title' | 'image_url' | 'thumbhash' | 'read_status' | 'my_rating' | 'owned'
+  'id' | 'title' | 'image_url' | 'thumbhash' | 'read_status' | 'my_rating'
+  | 'owned' | 'next_up' | 'favorite'
 >;
 export type SelectAuthor = typeof authors.$inferSelect;
 export type Author = Pick<SelectAuthor, 'id' | 'name'>;

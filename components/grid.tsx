@@ -115,6 +115,8 @@ export function BooksGrid({
                 readStatus={book.read_status}
                 myRating={book.my_rating}
                 owned={book.owned}
+                nextUp={book.next_up}
+                favorite={book.favorite}
               />
             );
 

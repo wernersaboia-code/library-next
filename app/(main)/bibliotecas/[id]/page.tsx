@@ -63,6 +63,8 @@ export default async function BibliotecaPage(
                 readStatus={livro.read_status}
                 myRating={livro.my_rating}
                 owned={livro.owned}
+                nextUp={livro.next_up}
+                favorite={livro.favorite}
               />
             </Link>
           ))}
