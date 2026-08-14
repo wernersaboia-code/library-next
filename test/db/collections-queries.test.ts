@@ -83,3 +83,37 @@ describe('fetchCollectionBooks', () => {
     expect(await fetchCollectionBooks(userId, vazia)).toEqual([]);
   });
 });
+
+describe('filtro do catálogo por biblioteca', () => {
+  it('devolve só os livros vinculados', async () => {
+    const { fetchBooksWithPagination } = await import('@/lib/db/queries');
+    const rows = await fetchBooksWithPagination(userId, {
+      bib: String(terror), posse: 'todos',
+    });
+    expect(rows.map((r) => r.title).sort()).toEqual(['Carrie', 'It']);
+  });
+
+  it('combina com os filtros existentes', async () => {
+    const { fetchBooksWithPagination } = await import('@/lib/db/queries');
+    const rows = await fetchBooksWithPagination(userId, {
+      bib: String(terror), status: 'lido', posse: 'todos',
+    });
+    expect(rows.map((r) => r.title)).toEqual(['It']);
+  });
+
+  it('biblioteca vazia devolve nada', async () => {
+    const { fetchBooksWithPagination } = await import('@/lib/db/queries');
+    const rows = await fetchBooksWithPagination(userId, {
+      bib: String(vazia), posse: 'todos',
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('bib não numérico é ignorado em vez de quebrar a página', async () => {
+    const { fetchBooksWithPagination } = await import('@/lib/db/queries');
+    const rows = await fetchBooksWithPagination(userId, {
+      bib: 'abc', posse: 'todos',
+    });
+    expect(rows.length).toBeGreaterThan(0);
+  });
+});

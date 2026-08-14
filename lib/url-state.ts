@@ -12,6 +12,7 @@ export interface SearchParams {
   series?: string;  // 'sim' | 'não'
   pub?: string;     // editora
   posse?: string;   // possuidos | nao-possuidos | todos
+  bib?: string;     // id da biblioteca (coleção)
 }
 
 export function parseSearchParams(
@@ -30,6 +31,7 @@ export function parseSearchParams(
     series: typeof params.series === 'string' ? params.series : undefined,
     pub: typeof params.pub === 'string' ? params.pub : undefined,
     posse: typeof params.posse === 'string' ? params.posse : undefined,
+    bib: typeof params.bib === 'string' ? params.bib : undefined,
   };
 }
 

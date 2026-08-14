@@ -2,19 +2,24 @@ import { Filter, FilterFallback } from '@/components/filters';
 import { Search, SearchFallback } from '@/components/search';
 import NavBar from '@/components/nav-bar';
 import { Suspense } from 'react';
+import { fetchCollections } from '@/lib/db/collections';
+import { getCurrentUserId } from '@/lib/auth-user';
 
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const userId = await getCurrentUserId();
+  const bibliotecas = await fetchCollections(userId);
+
   return (
     <div className="group flex w-full">
       <div className="hidden md:block w-[300px] h-screen sticky top-0 p-8">
         <div className="h-full rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
           <div className="h-full overflow-y-auto p-4">
             <Suspense fallback={<FilterFallback />}>
-              <Filter />
+              <Filter bibliotecas={bibliotecas} />
             </Suspense>
           </div>
         </div>
