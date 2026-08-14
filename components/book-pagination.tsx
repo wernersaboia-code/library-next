@@ -67,9 +67,39 @@ export function BookPagination({
           </Form>
         </PaginationItem>
 
-        <div className="text-sm text-muted-foreground">
-          {totalResults.toLocaleString()} resultados (página {currentPage.toLocaleString()} de {totalPages.toLocaleString()})
-        </div>
+        {/* Não reutilizamos FormValues aqui: ele grava um `page` escondido,
+            que colidiria com o campo visível — dois inputs de mesmo nome
+            enviam os dois valores, e o servidor leria o errado. */}
+        <Form action="/" className="flex flex-wrap items-center justify-center gap-2">
+          {Object.entries(searchParams).map(
+            ([key, value]) =>
+              key !== 'page' && (
+                <input key={key} type="hidden" name={key} value={value as string} />
+              )
+          )}
+          <span className="text-sm text-muted-foreground">
+            {totalResults.toLocaleString()} resultados · página
+          </span>
+          <label htmlFor="ir-para-pagina" className="sr-only">
+            Ir para a página
+          </label>
+          <input
+            id="ir-para-pagina"
+            name="page"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={totalPages}
+            defaultValue={currentPage}
+            className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm"
+          />
+          <span className="text-sm text-muted-foreground">
+            de {totalPages.toLocaleString()}
+          </span>
+          <Button type="submit" variant="outline" size="sm">
+            Ir
+          </Button>
+        </Form>
 
         <PaginationItem>
           <Form action="/">

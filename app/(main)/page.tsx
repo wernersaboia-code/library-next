@@ -9,7 +9,7 @@ import {
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
 import { ReadingStrip } from '@/components/reading-strip';
-import { parseSearchParams } from '@/lib/url-state';
+import { parseSearchParams, paginaValida } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollections } from '@/lib/db/collections';
 
@@ -22,15 +22,22 @@ export default async function Page(
   const parsedSearchParams = parseSearchParams(searchParams);
   const userId = await getCurrentUserId();
 
-  const [books, estimatedTotal, bibliotecas, lendoAgora] = await Promise.all([
-    fetchBooksWithPagination(userId, parsedSearchParams),
+  // O total vem primeiro: sem ele não dá para limitar a página pedida, e
+  // consultar com uma página inexistente devolveria grade vazia enquanto a
+  // paginação diz "página 42". Ver AD-8.
+  const [estimatedTotal, bibliotecas, lendoAgora] = await Promise.all([
     estimateTotalBooks(userId, parsedSearchParams),
     fetchCollections(userId),
     fetchReadingNow(userId),
   ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
-  const currentPage = Math.max(1, Number(parsedSearchParams.page) || 1);
+  const currentPage = paginaValida(parsedSearchParams.page, totalPages);
+
+  const books = await fetchBooksWithPagination(userId, {
+    ...parsedSearchParams,
+    page: String(currentPage),
+  });
 
   return (
     <div className="flex flex-col h-full">
