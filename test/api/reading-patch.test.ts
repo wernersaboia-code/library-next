@@ -168,3 +168,22 @@ describe('progresso não sobrescreve decisão do dono (AD-3)', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('título original', () => {
+  it('grava o título em língua original em livro do Calibre', async () => {
+    livroAtual = { read_status: 'lendo', owned: true, next_up: false, favorite: false };
+    const res = await PATCH('1', { originalTitle: 'Dune' });
+    expect(res.status).toBe(200);
+    expect(ultimoSet.original_title).toBe('Dune');
+  });
+
+  it('campo vazio limpa o título original', async () => {
+    await PATCH('1', { originalTitle: '   ' });
+    expect(ultimoSet.original_title).toBeNull();
+  });
+
+  it('pedido só com originalTitle não reclama de "nada para atualizar"', async () => {
+    const res = await PATCH('1', { originalTitle: 'Dune' });
+    expect(res.status).toBe(200);
+  });
+});

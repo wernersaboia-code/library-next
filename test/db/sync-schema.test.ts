@@ -73,5 +73,7 @@ describe('o sync não escreve dados de leitura', () => {
     expect(chaves).not.toContain('favorite');
     expect(chaves).not.toContain('my_rating');
     expect(chaves).not.toContain('read_status');
+    // Título original é dado do dono — o sync não pode tocá-lo.
+    expect(chaves).not.toContain('original_title');
   });
 });

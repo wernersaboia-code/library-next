@@ -16,7 +16,7 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 - Filtros por ano, avaliação, idioma, páginas, status de leitura, série e posse
 - Salto direto para qualquer página do acervo
 - Séries agrupadas por nome, com o número do volume à parte
-- Título original em língua original (ex.: "Dune" para "Duna"), no cadastro manual
+- Título original em língua original (ex.: "Dune" para "Duna"), editável em qualquer livro
 
 **Leitura**
 

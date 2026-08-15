@@ -18,6 +18,7 @@ import { TrackingControls } from './tracking-controls';
 import { NotesSection } from './notes-section';
 import { BookCollections } from './book-collections';
 import { ProgressControls } from './progress-controls';
+import { OriginalTitleEditor } from './original-title';
 import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
 
@@ -77,11 +78,7 @@ export default async function Page(
 
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">{book.title}</h1>
-          {book.original_title && (
-            <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
-              Título original: {book.original_title}
-            </p>
-          )}
+          <OriginalTitleEditor bookId={book.id} inicial={book.original_title} />
           <div className="text-lg md:text-xl mb-4">
             {book.authors.map((author, index) => (
               <span key={author}>

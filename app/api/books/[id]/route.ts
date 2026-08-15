@@ -69,6 +69,15 @@ export async function PATCH(
         : null;
     }
 
+    // Título original vale para qualquer livro — inclusive os do Calibre:
+    // a coluna fica fora de CatalogMetadata, então o sync nunca a toca.
+    if (body.originalTitle !== undefined) {
+      set.original_title = typeof body.originalTitle === 'string'
+        && body.originalTitle.trim()
+        ? body.originalTitle.trim()
+        : null;
+    }
+
     // "Terminei hoje": a única ação que grava data de conclusão (AD-1).
     // Vem depois do progresso de propósito, para vencer qualquer percentual
     // enviado no mesmo pedido.
