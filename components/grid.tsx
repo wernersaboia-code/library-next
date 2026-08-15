@@ -74,29 +74,60 @@ export function BooksGrid({
     }
   }
 
+  async function porNaFila() {
+    if (selecionados.size === 0) return;
+    setAviso(null);
+    setSalvando(true);
+    try {
+      // Uma chamada por livro: a rota de livro já sabe recusar o que não é
+      // possuído, e a seleção aqui é de punhado, não de acervo inteiro.
+      const respostas = await Promise.all(
+        [...selecionados].map((id) =>
+          fetch(`/api/books/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nextUp: true }),
+          })
+        )
+      );
+      const ok = respostas.filter((r) => r.ok).length;
+      const recusados = respostas.length - ok;
+      setAviso(
+        recusados === 0
+          ? `${ok} livro(s) na fila.`
+          : `${ok} na fila; ${recusados} recusado(s) — você ainda não tem esses.`
+      );
+      setSelecionados(new Set());
+    } catch {
+      setAviso('Falha de rede ao pôr na fila.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   const noFilters = Object.values(searchParams).every((v) => v === undefined);
 
   return (
     <div>
-      {bibliotecas.length > 0 && (
-        <div className="mb-3 flex items-center gap-3">
-          {selecionando ? (
-            <Button type="button" variant="outline" size="sm" onClick={sair}>
-              Cancelar seleção
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setSelecionando(true)}
-            >
-              Selecionar
-            </Button>
-          )}
-          {aviso && <span className="text-sm text-gray-500">{aviso}</span>}
-        </div>
-      )}
+      {/* A seleção agora serve também à fila, então não depende mais de
+          existir alguma biblioteca criada. */}
+      <div className="mb-3 flex items-center gap-3">
+        {selecionando ? (
+          <Button type="button" variant="outline" size="sm" onClick={sair}>
+            Cancelar seleção
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSelecionando(true)}
+          >
+            Selecionar
+          </Button>
+        )}
+        {aviso && <span className="text-sm text-gray-500">{aviso}</span>}
+      </div>
 
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
         {!books?.length ? (
@@ -115,6 +146,8 @@ export function BooksGrid({
                 readStatus={book.read_status}
                 myRating={book.my_rating}
                 owned={book.owned}
+                nextUp={book.next_up}
+                favorite={book.favorite}
               />
             );
 
@@ -167,6 +200,14 @@ export function BooksGrid({
               {selecionados.size} selecionado(s)
             </span>
             <div className="ml-auto flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={salvando || selecionados.size === 0}
+                onClick={() => void porNaFila()}
+              >
+                Ler em seguida
+              </Button>
               {bibliotecas.map((b) => (
                 <Button
                   key={b.id}

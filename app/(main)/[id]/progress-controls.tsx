@@ -13,7 +13,6 @@ interface ProgressInitial {
   readStatus: string;
   progressPercent: number | null;
   progressUpdatedAt: string | null;
-  dnfReason: string | null;
 }
 
 export function ProgressControls({
@@ -30,7 +29,6 @@ export function ProgressControls({
     initial.progressPercent === null ? '' : String(initial.progressPercent)
   );
   const [pagina, setPagina] = useState('');
-  const [motivo, setMotivo] = useState(initial.dnfReason ?? '');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -122,7 +120,8 @@ export function ProgressControls({
         </div>
       )}
 
-      {atual === 100 && initial.readStatus !== 'lido' && (
+      {atual === 100 && initial.readStatus !== 'lido'
+        && initial.readStatus !== 'abandonado' && (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-emerald-50 p-2 dark:bg-emerald-900/20">
           <span className="text-sm">Chegou ao fim deste livro?</span>
           <Button
@@ -190,7 +189,10 @@ export function ProgressControls({
 
       {/* Só quando o aviso de 100% não está na tela — dois botões iguais na
           mesma tela fazem o dono parar para descobrir se fazem a mesma coisa. */}
-      {initial.readStatus !== 'lido' && atual !== 100 && (
+      {/* Em livro abandonado este botão é ruído, e um toque acidental
+          desfaria o abandono (AD-4). */}
+      {initial.readStatus !== 'lido' && initial.readStatus !== 'abandonado'
+        && atual !== 100 && (
         <div>
           <Button
             type="button"
@@ -200,30 +202,6 @@ export function ProgressControls({
             disabled={salvando}
           >
             Terminei hoje
-          </Button>
-        </div>
-      )}
-
-      {initial.readStatus === 'abandonado' && (
-        <div>
-          <Label className="block mb-1" htmlFor="motivo-abandono">
-            Por que abandonou?
-          </Label>
-          <textarea
-            id="motivo-abandono"
-            className="flex w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Pode ser o motivo para voltar a ele um dia..."
-          />
-          <Button
-            type="button"
-            size="sm"
-            className="mt-2"
-            onClick={() => void enviar({ dnfReason: motivo })}
-            disabled={salvando}
-          >
-            Salvar motivo
           </Button>
         </div>
       )}

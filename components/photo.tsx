@@ -13,6 +13,8 @@ export function Photo({
   readStatus = null,
   myRating = null,
   owned = true,
+  nextUp = false,
+  favorite = false,
 }: {
   src: string | null;
   title: string;
@@ -21,6 +23,8 @@ export function Photo({
   readStatus?: string | null;
   myRating?: number | null;
   owned?: boolean;
+  nextUp?: boolean;
+  favorite?: boolean;
 }) {
   // Um livro lido sem capa também merece o selo, por isso as marcações
   // aparecem nos dois caminhos.
@@ -30,7 +34,13 @@ export function Photo({
         <span className="px-2 text-center text-xs text-muted-foreground">
           {title}
         </span>
-        <CoverBadges readStatus={readStatus} myRating={myRating} owned={owned} />
+        <CoverBadges
+          readStatus={readStatus}
+          myRating={myRating}
+          owned={owned}
+          nextUp={nextUp}
+          favorite={favorite}
+        />
       </div>
     );
   }
@@ -48,7 +58,13 @@ export function Photo({
         priority={priority}
         className="object-cover"
       />
-      <CoverBadges readStatus={readStatus} myRating={myRating} owned={owned} />
+      <CoverBadges
+        readStatus={readStatus}
+        myRating={myRating}
+        owned={owned}
+        nextUp={nextUp}
+        favorite={favorite}
+      />
     </div>
   );
 }

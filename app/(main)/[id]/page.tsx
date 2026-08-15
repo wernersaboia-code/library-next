@@ -127,6 +127,10 @@ export default async function Page(
               dateStarted: book.date_started,
               dateFinished: book.date_finished,
               myRating: book.my_rating,
+              dnfReason: book.dnf_reason,
+              nextUp: book.next_up,
+              favorite: book.favorite,
+              owned: book.owned,
             }}
           />
 
@@ -139,7 +143,6 @@ export default async function Page(
               progressUpdatedAt: book.progress_updated_at
                 ? book.progress_updated_at.toISOString()
                 : null,
-              dnfReason: book.dnf_reason,
             }}
           />
 

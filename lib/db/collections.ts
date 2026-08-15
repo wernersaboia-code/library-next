@@ -17,6 +17,8 @@ export interface CollectionBook {
   read_status: string;
   my_rating: number | null;
   owned: boolean;
+  next_up: boolean;
+  favorite: boolean;
 }
 
 /** Ordenada por nome: o dono procura pelo nome, não pela data de criação. */
@@ -72,6 +74,8 @@ export async function fetchCollectionBooks(
         read_status: books.read_status,
         my_rating: books.my_rating,
         owned: books.owned,
+        next_up: books.next_up,
+        favorite: books.favorite,
       })
       .from(bookCollections)
       .innerJoin(books, eq(books.id, bookCollections.bookId))

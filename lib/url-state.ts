@@ -61,3 +61,14 @@ export function stringifySearchParams(params: SearchParams): string {
   });
   return urlParams.toString();
 }
+/**
+ * A página pedida, limitada ao que existe. Um valor fora da faixa é preso ao
+ * intervalo em vez de virar erro: pedir a página 99 de 42 leva à última, que
+ * é o que a pessoa queria. Fica no servidor porque a URL é editável à mão.
+ */
+export function paginaValida(entrada: unknown, totalPaginas: number): number {
+  const ultima = Math.max(1, totalPaginas);
+  const n = Number(entrada);
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return Math.min(n, ultima);
+}

@@ -2,15 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { StarIcon } from 'lucide-react';
+import { BookmarkIcon, HeartIcon } from 'lucide-react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Estrelas } from '@/components/estrelas';
 
 const READ_STATUS_OPTIONS = [
   { value: 'lido', label: '✅ Lido' },
@@ -24,6 +22,10 @@ interface TrackingInitial {
   dateStarted: string | null;
   dateFinished: string | null;
   myRating: number | null;
+  dnfReason: string | null;
+  nextUp: boolean;
+  favorite: boolean;
+  owned: boolean;
 }
 
 interface TrackingControlsProps {
@@ -37,10 +39,13 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
   const [dateStarted, setDateStarted] = useState(initial.dateStarted ?? '');
   const [dateFinished, setDateFinished] = useState(initial.dateFinished ?? '');
   const [myRating, setMyRating] = useState(initial.myRating);
+  const [motivo, setMotivo] = useState(initial.dnfReason ?? '');
+  const [nextUp, setNextUp] = useState(initial.nextUp);
+  const [favorite, setFavorite] = useState(initial.favorite);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  async function update(body: Record<string, unknown>) {
+  async function update(body: Record<string, unknown>): Promise<boolean> {
     setError(null);
     setIsSaving(true);
     try {
@@ -50,15 +55,32 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        setError('Não foi possível salvar. Tente novamente.');
-        return;
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? 'Não foi possível salvar. Tente novamente.');
+        return false;
       }
       router.refresh();
+      return true;
     } catch {
       setError('Falha de rede. Tente novamente.');
+      return false;
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function alternarProximo() {
+    const alvo = !nextUp;
+    setNextUp(alvo);
+    // Reverter no erro: sem isso o botão fica mentindo sobre o que o banco
+    // tem — e o dono só descobre na página da fila.
+    if (!(await update({ nextUp: alvo }))) setNextUp(!alvo);
+  }
+
+  async function alternarFavorito() {
+    const alvo = !favorite;
+    setFavorite(alvo);
+    if (!(await update({ favorite: alvo }))) setFavorite(!alvo);
   }
 
   return (
@@ -70,6 +92,8 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
             value={readStatus}
             onValueChange={(value) => {
               setReadStatus(value);
+              // Abandonar não some com a marca de favorito nem com o
+              // progresso — só o status muda. Ver AD-3 e AD-7.
               void update({ readStatus: value });
             }}
           >
@@ -121,39 +145,77 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
         </div>
       </div>
 
+      {/* O motivo nasce aqui, colado no seletor que o provocou (AD-4).
+          Antes ele ficava no bloco de Progresso, longe o bastante para o
+          dono não ver que tinha aparecido. */}
+      {readStatus === 'abandonado' && (
+        <div>
+          <Label className="block mb-1" htmlFor="motivo-abandono">
+            Por que abandonou?
+          </Label>
+          <textarea
+            id="motivo-abandono"
+            autoFocus
+            className="flex w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Pode ser o motivo para voltar a ele um dia..."
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            onClick={() => void update({ dnfReason: motivo })}
+            disabled={isSaving}
+          >
+            Salvar motivo
+          </Button>
+        </div>
+      )}
+
       <div>
         <Label className="block mb-1">Minha avaliação</Label>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              aria-label={`Avaliar com ${star} estrela${star > 1 ? 's' : ''}`}
-              onClick={() => {
-                const nextRating = myRating === star ? null : star;
-                setMyRating(nextRating);
-                void update({ myRating: nextRating });
-              }}
-              className="p-0.5"
-            >
-              <StarIcon
-                className={`w-6 h-6 ${
-                  myRating !== null && star <= myRating
-                    ? 'text-yellow-400 fill-current'
-                    : 'text-gray-300'
-                }`}
-              />
-            </button>
-          ))}
-        </div>
+        <Estrelas
+          nota={myRating}
+          onEscolher={(nota) => {
+            setMyRating(nota);
+            void update({ myRating: nota });
+          }}
+        />
       </div>
 
-      {isSaving && (
-        <p className="text-sm text-gray-500">Salvando...</p>
-      )}
-      {error && (
-        <p className="text-sm text-red-600">{error}</p>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {/* A fila é do que se tem: livro de "Quero ter" não entra (AD-6). */}
+        {initial.owned && (
+          <Button
+            type="button"
+            variant={nextUp ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => void alternarProximo()}
+            disabled={isSaving}
+          >
+            <BookmarkIcon className={`mr-2 h-4 w-4 ${nextUp ? 'fill-current' : ''}`} />
+            {nextUp ? 'Na fila para ler' : 'Ler em seguida'}
+          </Button>
+        )}
+
+        {/* Favorito é julgamento sobre livro lido (AD-7). */}
+        {readStatus === 'lido' && (
+          <Button
+            type="button"
+            variant={favorite ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => void alternarFavorito()}
+            disabled={isSaving}
+          >
+            <HeartIcon className={`mr-2 h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+            {favorite ? 'Favorito' : 'Marcar como favorito'}
+          </Button>
+        )}
+      </div>
+
+      {isSaving && <p className="text-sm text-gray-500">Salvando...</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }
