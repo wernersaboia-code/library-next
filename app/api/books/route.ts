@@ -22,6 +22,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'O título é obrigatório' }, { status: 400 });
     }
 
+    // Título em língua original — opcional e só para o cadastro manual. O
+    // sync do Calibre escreve em campos de catálogo, mas esta rota é manual.
+    const originalTitle = typeof body.originalTitle === 'string'
+      && body.originalTitle.trim()
+      ? body.originalTitle.trim()
+      : null;
+
     const numPages = inteiroPositivo(body.numPages);
     if (numPages === 'invalido') {
       return NextResponse.json(
@@ -59,6 +66,7 @@ export async function POST(req: Request) {
         userId,
         title,
         title_source: title,
+        original_title: originalTitle,
         source: 'manual',
         owned: body.owned === true,
         num_pages: numPages,

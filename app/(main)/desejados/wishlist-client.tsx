@@ -63,6 +63,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   const router = useRouter();
 
   const [titulo, setTitulo] = useState('');
+  const [tituloOriginal, setTituloOriginal] = useState('');
   const [autor, setAutor] = useState('');
   const [ano, setAno] = useState('');
   const [paginas, setPaginas] = useState('');
@@ -172,6 +173,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: tituloAparado,
+          originalTitle: tituloOriginal.trim() || undefined,
           authors: autor.trim() ? [autor.trim()] : undefined,
           publicationYear: ano.trim() || undefined,
           numPages: paginas.trim() || undefined,
@@ -184,6 +186,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         return;
       }
       setTitulo('');
+      setTituloOriginal('');
       setAutor('');
       setAno('');
       setPaginas('');
@@ -334,6 +337,17 @@ export function WishlistClient({ initial }: WishlistClientProps) {
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Título do livro"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="block mb-1" htmlFor="wishlist-titulo-original">
+              Título original
+            </Label>
+            <Input
+              id="wishlist-titulo-original"
+              value={tituloOriginal}
+              onChange={(e) => setTituloOriginal(e.target.value)}
+              placeholder="Título em língua original (opcional)"
             />
           </div>
           <div>

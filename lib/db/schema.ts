@@ -41,6 +41,10 @@ export const books = pgTable(
     isbn: text('isbn'),
     isbn13: text('isbn13'),
     title: text('title').notNull(),
+    // Título em língua original (ex.: "Dune" para "Duna"). Campo de
+    // catálogo: hoje alimentado no cadastro manual; o sync do Calibre pode
+    // preenchê-lo no futuro, quando houver coluna custom.
+    original_title: text('original_title'),
 
     publication_year: integer('publication_year'),
     publisher: text('publisher'),
