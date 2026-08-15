@@ -16,6 +16,7 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 - Filtros por ano, avaliação, idioma, páginas, status de leitura, série e posse
 - Salto direto para qualquer página do acervo
 - Séries agrupadas por nome, com o número do volume à parte
+- Título original em língua original (ex.: "Dune" para "Duna"), no cadastro manual
 
 **Leitura**
 
@@ -102,3 +103,7 @@ campo fora da lista de catálogo.
 Specs e planos de implementação ficam em `docs/superpowers/`. Cada mudança
 relevante tem uma spec com as decisões de arquitetura e o porquê delas — é o
 melhor lugar para entender por que algo foi feito de um jeito e não de outro.
+
+A RLS por usuário está documentada em [docs/ativar-rls.md](docs/ativar-rls.md):
+o banco já tem as policies; o documento cobre o passo a passo para a aplicação
+passar a conectar como `book_app` (em vez de `postgres`, que as ignora).
