@@ -1,43 +1,12 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import {
   BookOpenIcon,
   BookmarkIcon,
   LibraryIcon,
   BookXIcon,
 } from 'lucide-react';
+import type { ReadingStats } from '@/lib/db/queries';
 
-interface Periodo {
-  livros: number;
-  paginas: number;
-}
-
-interface Stats {
-  totalBooks: number;
-  lendo: number;
-  lidos: number;
-  abandonados: number;
-  paginasLidas: number;
-  naoLidos: number;
-  lidosSemData: number;
-  mes: Periodo;
-  ano: Periodo;
-  porAno: Record<string, number>;
-}
-
-export default function Dashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-
-  useEffect(() => {
-    fetch('/api/reading/stats').then((res) => {
-      if (!res.ok) return;
-      res.json().then(setStats);
-    });
-  }, []);
-
-  if (!stats) return null;
-
+export default function Dashboard({ stats }: { stats: ReadingStats }) {
   const cards = [
     {
       label: 'Total',

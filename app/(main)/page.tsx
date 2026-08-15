@@ -6,6 +6,7 @@ import {
   estimateTotalBooks,
   fetchBooksWithPagination,
   fetchReadingNow,
+  fetchReadingStats,
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
 import { ReadingStrip } from '@/components/reading-strip';
@@ -25,10 +26,11 @@ export default async function Page(
   // O total vem primeiro: sem ele não dá para limitar a página pedida, e
   // consultar com uma página inexistente devolveria grade vazia enquanto a
   // paginação diz "página 42". Ver AD-8.
-  const [estimatedTotal, bibliotecas, lendoAgora] = await Promise.all([
+  const [estimatedTotal, bibliotecas, lendoAgora, stats] = await Promise.all([
     estimateTotalBooks(userId, parsedSearchParams),
     fetchCollections(userId),
     fetchReadingNow(userId),
+    fetchReadingStats(userId),
   ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
@@ -41,9 +43,10 @@ export default async function Page(
 
   return (
     <div className="flex flex-col h-full">
-      <Suspense fallback={null}>
-        <Dashboard />
-      </Suspense>
+      {/* O painel vem do servidor, junto com a grade: antes ele buscava
+          /api/reading/stats no cliente e só aparecia depois da hidratação
+          mais um round-trip. */}
+      <Dashboard stats={stats} />
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">
           <ReadingStrip livros={lendoAgora} />

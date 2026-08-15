@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Book } from '@/lib/db/schema';
 import { Photo } from './photo';
@@ -21,12 +22,28 @@ export function BooksGrid({
   searchParams: SearchParams;
   bibliotecas: Biblioteca[];
 }) {
+  const router = useRouter();
   const [selecionando, setSelecionando] = useState(false);
   // A seleção vive só nesta página (AD-5): paginar limpa, e é assim de
   // propósito — estado que sobrevive à navegação falha de formas sutis.
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
+  // Marca otimista de "na fila": o selo aparece antes de o refresh trazer o
+  // estado real. O efeito abaixo a limpa quando a grade nova chega.
+  const [filaLocal, setFilaLocal] = useState<Set<number>>(new Set());
   const [salvando, setSalvando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const primeiraGrade = useRef(true);
+
+  // Depois de cada refresh, `books` é a fonte da verdade: a marca local só
+  // existe para encurtar a espera, e mentir depois disso confundiria — um
+  // livro tirado da fila na página dele voltaria a aparecer marcado aqui.
+  useEffect(() => {
+    if (primeiraGrade.current) {
+      primeiraGrade.current = false;
+      return;
+    }
+    setFilaLocal(new Set());
+  }, [books]);
 
   function alternar(id: number) {
     setSelecionados((atual) => {
@@ -67,6 +84,9 @@ export function BooksGrid({
           : `${n} livro(s) adicionado(s).`
       );
       setSelecionados(new Set());
+      // Sem recarregar a página: o refresh refaz os Server Components e a
+      // grade passa a refletir o que o banco gravou.
+      router.refresh();
     } catch {
       setAviso('Falha de rede ao adicionar.');
     } finally {
@@ -78,11 +98,15 @@ export function BooksGrid({
     if (selecionados.size === 0) return;
     setAviso(null);
     setSalvando(true);
+    const ids = [...selecionados];
+    // Otimista: o selo aparece na hora; o refresh e o aviso corrigem o que
+    // o banco recusou.
+    setFilaLocal(new Set(ids));
     try {
       // Uma chamada por livro: a rota de livro já sabe recusar o que não é
       // possuído, e a seleção aqui é de punhado, não de acervo inteiro.
       const respostas = await Promise.all(
-        [...selecionados].map((id) =>
+        ids.map((id) =>
           fetch(`/api/books/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -90,6 +114,9 @@ export function BooksGrid({
           })
         )
       );
+      // Só os aprovados seguram a marca local; os recusados voltam ao que o
+      // servidor diz (ou seja, sem selo).
+      setFilaLocal(new Set(ids.filter((_, i) => respostas[i].ok)));
       const ok = respostas.filter((r) => r.ok).length;
       const recusados = respostas.length - ok;
       setAviso(
@@ -98,7 +125,9 @@ export function BooksGrid({
           : `${ok} na fila; ${recusados} recusado(s) — você ainda não tem esses.`
       );
       setSelecionados(new Set());
+      router.refresh();
     } catch {
+      setFilaLocal(new Set());
       setAviso('Falha de rede ao pôr na fila.');
     } finally {
       setSalvando(false);
@@ -146,7 +175,9 @@ export function BooksGrid({
                 readStatus={book.read_status}
                 myRating={book.my_rating}
                 owned={book.owned}
-                nextUp={book.next_up}
+                // filaLocal sobrepõe enquanto o refresh não confirma — ver
+                // porNaFila acima.
+                nextUp={book.next_up || filaLocal.has(book.id)}
                 favorite={book.favorite}
               />
             );

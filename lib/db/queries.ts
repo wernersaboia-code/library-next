@@ -203,6 +203,7 @@ export async function fetchBookById(userId: string, id: string) {
                 isbn: books.isbn,
                 isbn13: books.isbn13,
                 title: books.title,
+                original_title: books.original_title,
                 publication_year: books.publication_year,
                 publisher: books.publisher,
                 series: books.series,
@@ -395,4 +396,110 @@ export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> 
             .where(eq(books.favorite, true))
             .orderBy(books.title)
     );
+}
+
+// — Painel (estatísticas) —
+
+export interface PeriodoStats {
+    livros: number;
+    paginas: number;
+}
+
+export interface ReadingStats {
+    totalBooks: number;
+    lendo: number;
+    lidos: number;
+    abandonados: number;
+    paginasLidas: number;
+    naoLidos: number;
+    lidosSemData: number;
+    mes: PeriodoStats;
+    ano: PeriodoStats;
+    porAno: Record<string, number>;
+}
+
+/**
+ * Estatísticas do painel. AD-7 da spec do tracker: leitura ignora posse
+ * (`owned`) — apagar um livro do Calibre não apaga o histórico de que ele
+ * foi lido. Só "acervo" (totalBooks/naoLidos) é restrito a possuídos.
+ *
+ * Três consultas em vez das nove sequenciais que a rota fazia: os totais
+ * saem de um único `count(*) FILTER`, que o Postgres avalia numa passada
+ * pela tabela.
+ */
+export async function fetchReadingStats(userId: string): Promise<ReadingStats> {
+    return withUser(userId, async (tx) => {
+        // FILTER condensa os antigos count(*) avulsos num único scan.
+        const aggs = await tx.execute(sql`
+            SELECT
+              count(*) FILTER (WHERE ${books.owned})::int AS total_books,
+              count(*) FILTER (WHERE ${books.read_status} = 'lendo')::int AS lendo,
+              count(*) FILTER (WHERE ${books.read_status} = 'lido')::int AS lidos,
+              count(*) FILTER (WHERE ${books.read_status} = 'abandonado')::int AS abandonados,
+              count(*) FILTER (WHERE ${books.owned}
+                               AND ${books.read_status} = 'não lido')::int AS nao_lidos,
+              count(*) FILTER (WHERE ${books.read_status} = 'lido'
+                               AND ${books.date_finished} IS NULL)::int AS lidos_sem_data,
+              coalesce(sum(${books.num_pages})
+                       FILTER (WHERE ${books.read_status} = 'lido'), 0)::int AS paginas_lidas
+            FROM ${books}
+        `) as unknown as [Contagens];
+
+        // Um período é definido pela data de conclusão. `date_trunc` compara
+        // no fuso do banco; livro terminado em 31/12 fica no ano dele.
+        const periodos = await tx.execute(sql`
+            SELECT
+              count(*) FILTER (WHERE date_trunc('month', ${books.date_finished})
+                               = date_trunc('month', current_date))::int AS mes_livros,
+              coalesce(sum(${books.num_pages})
+                       FILTER (WHERE date_trunc('month', ${books.date_finished})
+                               = date_trunc('month', current_date)), 0)::int AS mes_paginas,
+              count(*) FILTER (WHERE date_trunc('year', ${books.date_finished})
+                               = date_trunc('year', current_date))::int AS ano_livros,
+              coalesce(sum(${books.num_pages})
+                       FILTER (WHERE date_trunc('year', ${books.date_finished})
+                               = date_trunc('year', current_date)), 0)::int AS ano_paginas
+            FROM ${books}
+            WHERE ${books.read_status} = 'lido'
+        `) as unknown as [Periodos];
+
+        const porAnoRows = await tx
+            .select({
+                ano: sql<string>`extract(year from ${books.date_finished})::text`,
+                n: sql<number>`count(*)`,
+            })
+            .from(books)
+            .where(sql`${books.date_finished} is not null`)
+            .groupBy(sql`extract(year from ${books.date_finished})`);
+
+        return {
+            totalBooks: aggs[0].total_books,
+            lendo: aggs[0].lendo,
+            lidos: aggs[0].lidos,
+            abandonados: aggs[0].abandonados,
+            paginasLidas: aggs[0].paginas_lidas,
+            naoLidos: aggs[0].nao_lidos,
+            lidosSemData: aggs[0].lidos_sem_data,
+            mes: { livros: periodos[0].mes_livros, paginas: periodos[0].mes_paginas },
+            ano: { livros: periodos[0].ano_livros, paginas: periodos[0].ano_paginas },
+            porAno: Object.fromEntries(porAnoRows.map((r) => [r.ano, Number(r.n)])),
+        };
+    });
+}
+
+interface Contagens {
+    total_books: number;
+    lendo: number;
+    lidos: number;
+    abandonados: number;
+    nao_lidos: number;
+    lidos_sem_data: number;
+    paginas_lidas: number;
+}
+
+interface Periodos {
+    mes_livros: number;
+    mes_paginas: number;
+    ano_livros: number;
+    ano_paginas: number;
 }
