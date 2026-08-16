@@ -1,6 +1,7 @@
 // lib/db/queries.ts
 import { sql, and, gte, eq, lte, not, isNull, like } from 'drizzle-orm';
 import { books, authors, bookToAuthor, bookCollections } from './schema';
+import type { Book } from './schema';
 import { SearchParams } from '@/lib/url-state';
 import { withUser } from './with-user';
 
@@ -141,10 +142,14 @@ function buildFilters(searchParams: SearchParams, requireImage = false) {
 
 // — Queries públicas —
 
+// A grade mostra a legenda (título/autor) sob a capa; `authors` vem do
+// array_agg abaixo, não é coluna de `books`.
+export type GridBook = Book & { authors: string[] };
+
 export async function fetchBooksWithPagination(
     userId: string,
     searchParams: SearchParams
-) {
+): Promise<GridBook[]> {
     const requestedPage = Math.max(1, Number(searchParams?.page) || 1);
     const filters = buildFilters(searchParams);
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -162,9 +167,13 @@ export async function fetchBooksWithPagination(
                 owned: books.owned,
                 next_up: books.next_up,
                 favorite: books.favorite,
+                authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,
             })
             .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
             .where(whereClause)
+            .groupBy(books.id)
             .orderBy(books.id)
             .limit(ITEMS_PER_PAGE)
             .offset(offset)
@@ -364,6 +373,7 @@ export interface LivroDaEstante {
     read_status: string;
     my_rating: number | null;
     owned: boolean;
+    authors: string[];
 }
 
 const colunasDaEstante = {
@@ -374,6 +384,7 @@ const colunasDaEstante = {
     read_status: books.read_status,
     my_rating: books.my_rating,
     owned: books.owned,
+    authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,
 };
 
 /** A fila de leitura: o que o dono decidiu ler antes dos outros. */
@@ -382,7 +393,10 @@ export async function fetchNextUp(userId: string): Promise<LivroDaEstante[]> {
         tx
             .select(colunasDaEstante)
             .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
             .where(eq(books.next_up, true))
+            .groupBy(books.id)
             .orderBy(books.title)
     );
 }
@@ -393,7 +407,10 @@ export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> 
         tx
             .select(colunasDaEstante)
             .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
             .where(eq(books.favorite, true))
+            .groupBy(books.id)
             .orderBy(books.title)
     );
 }

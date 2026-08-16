@@ -1,24 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-
-interface Note {
-  id: string;
-  kind: string;
-  textContent: string | null;
-  note: string | null;
-  createdAt: string;
-}
+import type { Note } from '@/lib/db/notes';
 
 interface NotesSectionProps {
   bookId: number;
+  initial: Note[];
 }
 
-export function NotesSection({ bookId }: NotesSectionProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+export function NotesSection({ bookId, initial }: NotesSectionProps) {
+  // O estado inicial vem do servidor (a página busca junto com o livro);
+  // `loadNotes` continua servindo para atualizar depois de cada mutação.
+  const [notes, setNotes] = useState<Note[]>(initial);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [quote, setQuote] = useState('');
@@ -46,11 +42,6 @@ export function NotesSection({ bookId }: NotesSectionProps) {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    void loadNotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookId]);
 
   async function addNote() {
     const trimmedQuote = quote.trim();
@@ -146,7 +137,7 @@ export function NotesSection({ bookId }: NotesSectionProps) {
   }
 
   return (
-    <div className="border rounded-md p-4 mb-6 space-y-4">
+    <div className="mb-6 space-y-4 rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
       <h2 className="text-lg font-semibold">Notas e citações</h2>
 
       <div className="space-y-2">
@@ -182,9 +173,9 @@ export function NotesSection({ bookId }: NotesSectionProps) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando notas...</p>
+        <p className="text-sm text-muted-foreground">Carregando notas...</p>
       ) : notes.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhuma nota ainda.</p>
+        <p className="text-sm text-muted-foreground">Nenhuma nota ainda.</p>
       ) : (
         <ul className="space-y-3">
           {notes.map((n) => (
@@ -226,7 +217,7 @@ export function NotesSection({ bookId }: NotesSectionProps) {
               ) : (
                 <div className="space-y-1">
                   {n.textContent && (
-                    <p className="italic text-gray-700">&ldquo;{n.textContent}&rdquo;</p>
+                    <p className="italic text-foreground/80">&ldquo;{n.textContent}&rdquo;</p>
                   )}
                   {n.note && <p className="text-sm">{n.note}</p>}
                   <div className="flex gap-2 pt-1">

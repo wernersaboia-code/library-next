@@ -29,12 +29,12 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-8">
-      <h1 className="text-2xl font-bold">Configurações</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Configurações</h1>
 
-      <section className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+      <section className="rounded-xl bg-card p-6 text-card-foreground shadow-sm ring-1 ring-border">
         <h2 className="text-lg font-semibold mb-4">Conta</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Conectado como <strong>{email}</strong>
+        <p className="text-muted-foreground">
+          Conectado como <strong className="text-foreground">{email}</strong>
         </p>
       </section>
     </div>

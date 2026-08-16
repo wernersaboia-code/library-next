@@ -9,8 +9,8 @@ export default async function BibliotecasPage() {
   return (
     <div className="max-w-2xl mx-auto w-full p-4 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bibliotecas</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Bibliotecas</h1>
+        <p className="text-sm text-muted-foreground">
           Conjuntos de livros que você monta — por tema, por fila de leitura,
           pelo que fizer sentido.
         </p>

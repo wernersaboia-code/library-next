@@ -43,20 +43,21 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
   const anos = Object.entries(stats.porAno ?? {}).sort(
     ([a], [b]) => Number(a) - Number(b)
   );
+  const maxAno = Math.max(...anos.map(([, quantidade]) => quantidade), 1);
 
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm flex flex-col items-center"
+            className="flex flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border"
           >
             <div className={`p-2 rounded-full mb-2 ${card.color}`}>
               <card.icon className="w-5 h-5" />
             </div>
             <span className="text-2xl font-bold">{card.value}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {card.label}
             </span>
           </div>
@@ -64,8 +65,8 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
+          <h3 className="text-xs font-semibold text-muted-foreground">
             Neste mês
           </h3>
           <p className="text-sm">
@@ -74,8 +75,8 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
             {stats.mes.paginas.toLocaleString('pt-BR')} páginas
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
+          <h3 className="text-xs font-semibold text-muted-foreground">
             Neste ano
           </h3>
           <p className="text-sm">
@@ -87,16 +88,32 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
       </div>
 
       {anos.length > 0 && (
-        <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+        <div className="mt-4 rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
+          <h3 className="text-xs font-semibold text-muted-foreground mb-3">
             Lidos por ano
           </h3>
-          <div className="flex flex-wrap gap-x-6 gap-y-1">
-            {anos.map(([ano, quantidade]) => (
-              <span key={ano} className="text-sm">
-                <span className="font-medium">{ano}</span>: {quantidade}
-              </span>
-            ))}
+          <div className="flex h-32 items-end gap-2">
+            {anos.map(([ano, quantidade]) => {
+              const altura = Math.max((quantidade / maxAno) * 100, 4);
+              return (
+                <div
+                  key={ano}
+                  className="flex h-full flex-1 flex-col items-center gap-1"
+                  title={`${ano}: ${quantidade}`}
+                >
+                  <span className="text-[10px] font-medium text-foreground">
+                    {quantidade}
+                  </span>
+                  <div className="flex w-full flex-1 items-end">
+                    <div
+                      className="w-full rounded-t-md bg-primary/70 transition-colors hover:bg-primary"
+                      style={{ height: `${altura}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{ano}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -105,7 +122,7 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
         // AD-2: sem esta linha, "Lidos: 4" ao lado de um gráfico por ano
         // vazio parece defeito, quando é a consequência de não inventarmos
         // datas para leituras antigas.
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-xs text-muted-foreground">
           {stats.lidosSemData}{' '}
           {stats.lidosSemData === 1
             ? 'lido sem data registrada'

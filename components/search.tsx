@@ -53,7 +53,7 @@ function SearchBase({ initialQuery }: { initialQuery: string }) {
         id="search"
         placeholder="Buscar livros..."
         value={inputValue}
-        className="w-full border-0 px-10 py-6 text-base md:text-sm overflow-hidden focus-visible:ring-0"
+        className="w-full rounded-xl border-0 bg-card px-10 py-6 text-base shadow-sm ring-1 ring-border focus-visible:ring-2 focus-visible:ring-ring md:text-sm overflow-hidden"
       />
       <LoadingSpinner />
     </Form>

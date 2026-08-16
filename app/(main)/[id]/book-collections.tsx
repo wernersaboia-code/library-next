@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useRefreshAgendado } from '@/lib/use-refresh-agendado';
 
 interface Biblioteca {
   id: number;
@@ -19,7 +19,7 @@ export function BookCollections({
   atuais: Biblioteca[];
   todas: Biblioteca[];
 }) {
-  const router = useRouter();
+  const agendarRefresh = useRefreshAgendado();
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function BookCollections({
         setErro(data?.error ?? 'Não foi possível salvar.');
         return;
       }
-      router.refresh();
+      agendarRefresh();
     } catch {
       setErro('Falha de rede ao salvar.');
     } finally {
@@ -52,13 +52,13 @@ export function BookCollections({
     <div className="mb-4 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         {atuais.length === 0 ? (
-          <span className="text-sm text-gray-500">Nenhuma biblioteca</span>
+          <span className="text-sm text-muted-foreground">Nenhuma biblioteca</span>
         ) : (
           atuais.map((b) => (
             <Link
               key={b.id}
               href={`/bibliotecas/${b.id}`}
-              className="rounded-full bg-gray-200 px-3 py-1 text-xs hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+              className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
             >
               {b.name}
             </Link>
@@ -77,7 +77,7 @@ export function BookCollections({
       </div>
 
       {editando && (
-        <div className="flex flex-wrap gap-2 rounded-md border p-3">
+        <div className="flex flex-wrap gap-2 rounded-lg border border-border p-3">
           {todas.map((b) => {
             const dentro = pertence.has(b.id);
             return (

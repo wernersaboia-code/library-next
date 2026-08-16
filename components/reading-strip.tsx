@@ -10,7 +10,7 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
 
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+      <h2 className="mb-2 font-display text-base font-semibold text-foreground">
         Lendo agora
       </h2>
       <div className="flex gap-4 overflow-x-auto pb-2">
@@ -33,13 +33,16 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
                 readStatus="lendo"
                 myRating={null}
               />
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              <p className="mt-1 truncate text-xs font-medium text-foreground">
+                {livro.title}
+              </p>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-emerald-600"
                   style={{ width: `${percentual}%` }}
                 />
               </div>
-              <p className="mt-1 truncate text-xs text-gray-600 dark:text-gray-400">
+              <p className="mt-1 truncate text-xs text-muted-foreground">
                 {percentual}%
               </p>
               {parado && (

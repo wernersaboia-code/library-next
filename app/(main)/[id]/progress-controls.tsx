@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   paginaDoPercentual, percentualDaPagina, diasParado, DIAS_PARA_PARADO,
 } from '@/lib/reading';
+import { useRefreshAgendado } from '@/lib/use-refresh-agendado';
 
 interface ProgressInitial {
   readStatus: string;
@@ -24,7 +24,7 @@ export function ProgressControls({
   numPages: number | null;
   initial: ProgressInitial;
 }) {
-  const router = useRouter();
+  const agendarRefresh = useRefreshAgendado();
   const [percentual, setPercentual] = useState(
     initial.progressPercent === null ? '' : String(initial.progressPercent)
   );
@@ -60,7 +60,7 @@ export function ProgressControls({
         setErro(data?.error ?? 'Não foi possível salvar.');
         return;
       }
-      router.refresh();
+      agendarRefresh();
     } catch {
       setErro('Falha de rede ao salvar. O valor digitado continua aqui.');
     } finally {
@@ -99,18 +99,18 @@ export function ProgressControls({
   }
 
   return (
-    <div className="mb-6 space-y-3 rounded-md border p-4">
+    <div className="mb-6 space-y-3 rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
       <h2 className="text-lg font-semibold">Progresso</h2>
 
       {mostrarProgresso && atual !== null && (
         <div className="space-y-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-emerald-600"
               style={{ width: `${atual}%` }}
             />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             {atual}%
             {paginaAtual !== null && ` · página ~${paginaAtual} de ${numPages}`}
             {parado && (

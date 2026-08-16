@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { LibraryIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/empty-state';
 
 interface Biblioteca {
   id: number;
@@ -131,9 +133,11 @@ export function BibliotecasClient({ initial }: { initial: Biblioteca[] }) {
       </div>
 
       {initial.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          Nenhuma biblioteca ainda. Crie a primeira acima.
-        </p>
+        <EmptyState
+          icone={LibraryIcon}
+          titulo="Nenhuma biblioteca ainda"
+          descricao="Crie a primeira acima para agrupar livros por tema ou por fila de leitura."
+        />
       ) : (
         <ul className="space-y-2">
           {initial.map((b) => (

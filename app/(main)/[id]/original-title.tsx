@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useRefreshAgendado } from '@/lib/use-refresh-agendado';
 
 /**
  * Título em língua original, editável em qualquer livro — inclusive os
@@ -18,7 +18,7 @@ export function OriginalTitleEditor({
   bookId: number;
   inicial: string | null;
 }) {
-  const router = useRouter();
+  const agendarRefresh = useRefreshAgendado();
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(inicial ?? '');
   const [salvando, setSalvando] = useState(false);
@@ -39,7 +39,7 @@ export function OriginalTitleEditor({
         return;
       }
       setEditando(false);
-      router.refresh();
+      agendarRefresh();
     } catch {
       setErro('Falha de rede. Tente novamente.');
     } finally {
@@ -79,14 +79,14 @@ export function OriginalTitleEditor({
   return (
     <div className="mb-1 flex items-center gap-2">
       {valor ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Título original: {valor}
         </p>
       ) : (
         <button
           type="button"
           onClick={() => setEditando(true)}
-          className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Adicionar título original
         </button>
@@ -96,7 +96,7 @@ export function OriginalTitleEditor({
           type="button"
           onClick={() => setEditando(true)}
           aria-label="Editar título original"
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="text-muted-foreground hover:text-foreground"
         >
           <PencilIcon className="h-3.5 w-3.5" />
         </button>

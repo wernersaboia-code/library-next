@@ -1,11 +1,44 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { BookMarkedIcon, LogOutIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
+import { ThemeToggle } from './theme-toggle';
+
+const LINKS = [
+  { href: '/', label: 'Acervo', ativo: (path: string) => path === '/' },
+  {
+    href: '/bibliotecas',
+    label: 'Bibliotecas',
+    ativo: (path: string) => path.startsWith('/bibliotecas'),
+  },
+  {
+    href: '/proximos',
+    label: 'Próximos',
+    ativo: (path: string) => path.startsWith('/proximos'),
+  },
+  {
+    href: '/favoritos',
+    label: 'Favoritos',
+    ativo: (path: string) => path.startsWith('/favoritos'),
+  },
+  {
+    href: '/desejados',
+    label: 'Quero ter',
+    ativo: (path: string) => path.startsWith('/desejados'),
+  },
+  {
+    href: '/settings',
+    label: 'Configurações',
+    ativo: (path: string) => path.startsWith('/settings'),
+  },
+];
 
 export default function NavBar() {
   const router = useRouter();
+  const pathname = usePathname();
 
   async function sair() {
     const supabase = createClient();
@@ -15,49 +48,39 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="flex items-center justify-end gap-4 mb-2">
-      {/* Primeiro item: sem ele não havia como voltar ao catálogo de dentro
-          de /desejados nem de /settings. */}
+    <nav className="flex items-center gap-1.5 overflow-x-auto py-2">
       <Link
         href="/"
-        className="mr-auto text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        className="mr-auto flex shrink-0 items-center gap-2 font-display text-lg font-semibold tracking-tight text-foreground"
       >
-        Acervo
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+          <BookMarkedIcon className="h-4 w-4" aria-hidden />
+        </span>
+        <span className="hidden sm:inline">Book Inventory</span>
       </Link>
-      <Link
-        href="/bibliotecas"
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        Bibliotecas
-      </Link>
-      <Link
-        href="/proximos"
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        Próximos
-      </Link>
-      <Link
-        href="/favoritos"
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        Favoritos
-      </Link>
-      <Link
-        href="/desejados"
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        Quero ter
-      </Link>
-      <Link
-        href="/settings"
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        Configurações
-      </Link>
+      {LINKS.map((link) => {
+        const ativo = link.ativo(pathname);
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={cn(
+              'shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+              ativo
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            )}
+          >
+            {link.label}
+          </Link>
+        );
+      })}
+      <ThemeToggle />
       <button
         onClick={sair}
-        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
       >
+        <LogOutIcon className="h-4 w-4" aria-hidden />
         Sair
       </button>
     </nav>

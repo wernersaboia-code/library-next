@@ -18,18 +18,18 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="max-w-md p-6 mx-auto bg-white dark:bg-black border border-gray-200 rounded-lg shadow-md">
-      <h2 className="mb-4 text-xl font-bold text-center text-gray-900 dark:text-gray-100">
+    <div className="max-w-md p-6 mx-auto bg-card text-card-foreground border border-border rounded-xl shadow-md">
+      <h2 className="mb-4 text-xl font-bold text-center">
         Algo deu errado
       </h2>
-      <p className="mb-4 text-gray-700 dark:text-gray-300">
+      <p className="mb-4 text-muted-foreground">
         Não foi possível carregar esta página. Tente de novo; se persistir, o
         código abaixo identifica o erro nos registros do servidor.
       </p>
       {error.digest && (
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-4 text-sm text-muted-foreground">
           Código:{' '}
-          <code className="p-1 font-mono bg-gray-200 dark:bg-gray-800 rounded">
+          <code className="p-1 font-mono bg-muted rounded">
             {error.digest}
           </code>
         </p>
@@ -37,7 +37,7 @@ export default function Error({
       <button
         type="button"
         onClick={reset}
-        className="px-4 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-md"
+        className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md"
       >
         Tentar novamente
       </button>

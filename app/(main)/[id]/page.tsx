@@ -21,6 +21,7 @@ import { ProgressControls } from './progress-controls';
 import { OriginalTitleEditor } from './original-title';
 import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
+import { fetchNotes } from '@/lib/db/notes';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -48,9 +49,15 @@ export default async function Page(
   const searchParams = await props.searchParams;
   const params = await props.params;
   const userId = await getCurrentUserId();
-  const [book, bibliotecas] = await Promise.all([
+  const bookId = Number(params.id);
+  // As notas entram no mesmo fetch da página (AD do painel): renderizá-las
+  // aqui evita o round-trip no cliente + o flash "Carregando notas...".
+  const [book, bibliotecas, notas] = await Promise.all([
     fetchBookById(userId, params.id),
     fetchCollections(userId),
+    Number.isInteger(bookId) && bookId > 0
+      ? fetchNotes(userId, bookId)
+      : Promise.resolve([]),
   ]);
   if (!book) notFound();
 
@@ -77,7 +84,9 @@ export default async function Page(
         </div>
 
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">{book.title}</h1>
+          <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight mb-2">
+            {book.title}
+          </h1>
           <OriginalTitleEditor bookId={book.id} inicial={book.original_title} />
           <div className="text-lg md:text-xl mb-4">
             {book.authors.map((author, index) => (
@@ -89,7 +98,7 @@ export default async function Page(
           </div>
 
           {book.series && (
-            <p className="flex items-center text-sm text-gray-600 mb-4">
+            <p className="flex items-center text-sm text-muted-foreground mb-4">
               <LayersIcon className="w-4 h-4 mr-2" />
               Série: {book.series}
               {book.series_index !== null &&
@@ -108,7 +117,7 @@ export default async function Page(
             <span className="text-lg font-semibold">
               {Number(book.average_rating).toFixed(1)}
             </span>
-            <span className="text-gray-600 ml-2">
+            <span className="text-muted-foreground ml-2">
               ({Number(book.ratings_count).toLocaleString()} avaliações)
             </span>
           </div>
@@ -116,7 +125,7 @@ export default async function Page(
           {/* A descrição do Calibre é HTML. Sanitizada no servidor
               (lib/description.ts) porque veio de metadados de terceiros. */}
           <div
-            className="text-gray-700 dark:text-gray-300 mb-6 space-y-3 [&_a]:underline [&_li]:ml-5 [&_li]:list-disc"
+            className="text-foreground/80 mb-6 space-y-3 [&_a]:underline [&_li]:ml-5 [&_li]:list-disc"
             dangerouslySetInnerHTML={{
               __html: sanitizeDescription(book.description),
             }}
@@ -148,25 +157,25 @@ export default async function Page(
             }}
           />
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="flex items-center">
-              <BookOpenIcon className="w-5 h-5 mr-2 text-gray-600" />
-              <span>{book.num_pages} páginas</span>
-            </div>
-            <div className="flex items-center">
-              <GlobeIcon className="w-5 h-5 mr-2 text-gray-600" />
-              <span>{getLanguageLabel(book.language_code)}</span>
-            </div>
-            <div className="flex items-center">
-              <CalendarIcon className="w-5 h-5 mr-2 text-gray-600" />
-              <span>{book.publication_year}</span>
-            </div>
-            <div className="flex items-center">
-              <span>ISBN: {book.isbn || 'Nenhum'}</span>
-            </div>
+          <div className="mb-6 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+              <BookOpenIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+              {book.num_pages} páginas
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+              <GlobeIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+              {getLanguageLabel(book.language_code)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+              <CalendarIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+              {book.publication_year}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+              ISBN: {book.isbn || 'Nenhum'}
+            </span>
           </div>
 
-          <NotesSection bookId={book.id} />
+          <NotesSection bookId={book.id} initial={notas} />
         </div>
       </div>
     </ScrollArea>
@@ -184,7 +193,7 @@ function StarRating({ rating }: { rating: string | null }) {
           className={`w-5 h-5 ${
             i < Math.floor(Number(rating))
               ? 'text-yellow-400 fill-current'
-              : 'text-gray-300'
+              : 'text-muted-foreground/40'
           }`}
         />
       ))}

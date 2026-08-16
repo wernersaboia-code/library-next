@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { BookOpenIcon } from 'lucide-react';
 import { Photo } from '@/components/photo';
+import { BookCaption } from './book-caption';
+import { EmptyState } from './empty-state';
 import type { LivroDaEstante } from '@/lib/db/queries';
 
 /**
@@ -11,12 +14,14 @@ import type { LivroDaEstante } from '@/lib/db/queries';
 export function Estante({
   livros,
   vazio,
+  icone = BookOpenIcon,
 }: {
   livros: LivroDaEstante[];
   vazio: string;
+  icone?: React.ElementType;
 }) {
   if (livros.length === 0) {
-    return <p className="text-sm text-gray-500">{vazio}</p>;
+    return <EmptyState icone={icone} titulo="Nada por aqui ainda" descricao={vazio} />;
   }
 
   return (
@@ -36,6 +41,7 @@ export function Estante({
             myRating={livro.my_rating}
             owned={livro.owned}
           />
+          <BookCaption titulo={livro.title} autores={livro.authors} />
         </Link>
       ))}
     </div>

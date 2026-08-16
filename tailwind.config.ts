@@ -16,6 +16,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['var(--font-geist-sans)', ...fontFamily.sans],
+        display: ['var(--font-fraunces)', 'Georgia', 'Cambria', 'serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

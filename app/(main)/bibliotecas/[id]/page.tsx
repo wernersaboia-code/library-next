@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, LibraryIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Photo } from '@/components/photo';
+import { BookCaption } from '@/components/book-caption';
+import { EmptyState } from '@/components/empty-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollection, fetchCollectionBooks } from '@/lib/db/collections';
 
@@ -29,24 +31,25 @@ export default async function BibliotecaPage(
         </Button>
         <Link
           href={`/?bib=${collectionId}`}
-          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Ver no catálogo com filtros
         </Link>
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold">{biblioteca.name}</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{biblioteca.name}</h1>
+        <p className="text-sm text-muted-foreground">
           {livros.length} {livros.length === 1 ? 'livro' : 'livros'}
         </p>
       </div>
 
       {livros.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          Nenhum livro aqui ainda. Use o modo de seleção no catálogo para
-          adicionar vários de uma vez.
-        </p>
+        <EmptyState
+          icone={LibraryIcon}
+          titulo="Nenhum livro aqui ainda"
+          descricao="Use o modo de seleção no catálogo para adicionar vários de uma vez."
+        />
       ) : (
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
           {livros.map((livro, index) => (
@@ -66,6 +69,7 @@ export default async function BibliotecaPage(
                 nextUp={livro.next_up}
                 favorite={livro.favorite}
               />
+              <BookCaption titulo={livro.title} autores={livro.authors} />
             </Link>
           ))}
         </div>

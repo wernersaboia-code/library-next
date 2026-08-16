@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { BookmarkIcon, HeartIcon } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -9,6 +8,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Estrelas } from '@/components/estrelas';
+import { useRefreshAgendado } from '@/lib/use-refresh-agendado';
 
 const READ_STATUS_OPTIONS = [
   { value: 'lido', label: '✅ Lido' },
@@ -34,7 +34,7 @@ interface TrackingControlsProps {
 }
 
 export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
-  const router = useRouter();
+  const agendarRefresh = useRefreshAgendado();
   const [readStatus, setReadStatus] = useState(initial.readStatus);
   const [dateStarted, setDateStarted] = useState(initial.dateStarted ?? '');
   const [dateFinished, setDateFinished] = useState(initial.dateFinished ?? '');
@@ -59,7 +59,7 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
         setError(data?.error ?? 'Não foi possível salvar. Tente novamente.');
         return false;
       }
-      router.refresh();
+      agendarRefresh();
       return true;
     } catch {
       setError('Falha de rede. Tente novamente.');
@@ -84,7 +84,7 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
   }
 
   return (
-    <div className="border rounded-md p-4 mb-6 space-y-4">
+    <div className="mb-6 space-y-4 rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <Label className="block mb-1">Status de leitura</Label>
@@ -214,7 +214,7 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
         )}
       </div>
 
-      {isSaving && <p className="text-sm text-gray-500">Salvando...</p>}
+      {isSaving && <p className="text-sm text-muted-foreground">Salvando...</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );

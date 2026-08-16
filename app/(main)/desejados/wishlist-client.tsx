@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BookmarkPlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Photo } from '@/components/photo';
+import { EmptyState } from '@/components/empty-state';
 
 interface LivroDesejado {
   id: number;
@@ -394,7 +396,11 @@ export function WishlistClient({ initial }: WishlistClientProps) {
       </div>
 
       {initial.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhum livro na lista de desejados ainda.</p>
+        <EmptyState
+          icone={BookmarkPlusIcon}
+          titulo="Nenhum livro na lista de desejados"
+          descricao="Busque na Open Library ou preencha manualmente acima."
+        />
       ) : (
         <ul className="space-y-3">
           {initial.map((livro) => (

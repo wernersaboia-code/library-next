@@ -3,9 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Book } from '@/lib/db/schema';
+import { SearchXIcon } from 'lucide-react';
+import type { GridBook } from '@/lib/db/queries';
 import { Photo } from './photo';
+import { BookCaption } from './book-caption';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from './empty-state';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 
 interface Biblioteca {
@@ -18,7 +21,7 @@ export function BooksGrid({
   searchParams,
   bibliotecas,
 }: {
-  books: Book[];
+  books: GridBook[];
   searchParams: SearchParams;
   bibliotecas: Biblioteca[];
 }) {
@@ -134,8 +137,6 @@ export function BooksGrid({
     }
   }
 
-  const noFilters = Object.values(searchParams).every((v) => v === undefined);
-
   return (
     <div>
       {/* A seleção agora serve também à fila, então não depende mais de
@@ -160,9 +161,18 @@ export function BooksGrid({
 
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
         {!books?.length ? (
-          <p className="text-center text-muted-foreground col-span-full">
-            Nenhum livro encontrado.
-          </p>
+          <div className="col-span-full">
+            <EmptyState
+              icone={SearchXIcon}
+              titulo="Nenhum livro encontrado"
+              descricao="Tente ajustar a busca ou os filtros."
+              acao={
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push('/')}>
+                  Ver todos os livros
+                </Button>
+              }
+            />
+          </div>
         ) : (
           books.map((book, index) => {
             const marcado = selecionados.has(book.id);
@@ -181,6 +191,9 @@ export function BooksGrid({
                 favorite={book.favorite}
               />
             );
+            const legenda = (
+              <BookCaption titulo={book.title} autores={book.authors} />
+            );
 
             if (selecionando) {
               return (
@@ -194,6 +207,7 @@ export function BooksGrid({
                   }`}
                 >
                   {capa}
+                  {legenda}
                   <span
                     aria-hidden
                     className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${
@@ -213,9 +227,13 @@ export function BooksGrid({
                 href={`/${book.id}?${stringifySearchParams(searchParams)}`}
                 key={book.id}
                 className="block transition ease-in-out md:hover:scale-105"
-                prefetch={noFilters ? true : null}
+                // Sempre pré-carrega (default): a página do livro é dinâmica,
+                // e o payload pré-carregado cobre a transição com o loading
+                // em vez de esperar o round-trip começar do zero no clique.
+                prefetch
               >
                 {capa}
+                {legenda}
               </Link>
             );
           })
@@ -225,7 +243,7 @@ export function BooksGrid({
       {selecionando && (
         // Barra no rodapé: o uso principal é no celular, onde é o polegar
         // que alcança.
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-white p-3 shadow-lg dark:bg-gray-800">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-card p-3 shadow-lg">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
             <span className="text-sm font-medium">
               {selecionados.size} selecionado(s)
