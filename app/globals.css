@@ -64,3 +64,15 @@
     @apply border-border;
   }
 }
+
+@layer utilities {
+  /* Fileiras roláveis (nav do header no celular) sem a barra de rolagem
+      visível — o scroll continua, só o indicador some. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

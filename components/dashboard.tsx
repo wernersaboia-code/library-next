@@ -92,28 +92,25 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
           <h3 className="text-xs font-semibold text-muted-foreground mb-3">
             Lidos por ano
           </h3>
-          <div className="flex h-32 items-end gap-2">
-            {anos.map(([ano, quantidade]) => {
-              const altura = Math.max((quantidade / maxAno) * 100, 4);
-              return (
-                <div
-                  key={ano}
-                  className="flex h-full flex-1 flex-col items-center gap-1"
-                  title={`${ano}: ${quantidade}`}
-                >
-                  <span className="text-[10px] font-medium text-foreground">
-                    {quantidade}
-                  </span>
-                  <div className="flex w-full flex-1 items-end">
-                    <div
-                      className="w-full rounded-t-md bg-primary/70 transition-colors hover:bg-primary"
-                      style={{ height: `${altura}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{ano}</span>
+          {/* Barras horizontais, uma por ano: com colunas verticais muitos
+              anos viravam um retângulo marrom sem informação. */}
+          <div className="space-y-2">
+            {anos.map(([ano, quantidade]) => (
+              <div key={ano} className="flex items-center gap-3">
+                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                  {ano}
+                </span>
+                <div className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width: `${(quantidade / maxAno) * 100}%` }}
+                  />
                 </div>
-              );
-            })}
+                <span className="w-8 shrink-0 text-xs font-medium tabular-nums text-foreground">
+                  {quantidade}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

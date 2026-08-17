@@ -48,7 +48,7 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="flex items-center gap-1.5 overflow-x-auto py-2">
+    <nav className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-2">
       <Link
         href="/"
         className="mr-auto flex shrink-0 items-center gap-2 font-display text-lg font-semibold tracking-tight text-foreground"

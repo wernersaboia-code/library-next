@@ -23,23 +23,33 @@ export default async function Page(
   const parsedSearchParams = parseSearchParams(searchParams);
   const userId = await getCurrentUserId();
 
-  // O total vem primeiro: sem ele não dá para limitar a página pedida, e
-  // consultar com uma página inexistente devolveria grade vazia enquanto a
-  // paginação diz "página 42". Ver AD-8.
-  const [estimatedTotal, bibliotecas, lendoAgora, stats] = await Promise.all([
-    estimateTotalBooks(userId, parsedSearchParams),
-    fetchCollections(userId),
-    fetchReadingNow(userId),
-    fetchReadingStats(userId),
-  ]);
+  // A grade sai na mesma leva do total (AD-8): a dependência era só para
+  // "prender" a página pedida à faixa existente. O caso raro de página fora
+  // do alcance (URL à mão) rebusca com a página ajustada; o comum ganha um
+  // round-trip a menos em toda carga.
+  const requestedPage = Math.max(1, Number(parsedSearchParams.page) || 1);
+  const [estimatedTotal, bibliotecas, lendoAgora, stats, booksNaPaginaPedida] =
+    await Promise.all([
+      estimateTotalBooks(userId, parsedSearchParams),
+      fetchCollections(userId),
+      fetchReadingNow(userId),
+      fetchReadingStats(userId),
+      fetchBooksWithPagination(userId, {
+        ...parsedSearchParams,
+        page: String(requestedPage),
+      }),
+    ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
   const currentPage = paginaValida(parsedSearchParams.page, totalPages);
 
-  const books = await fetchBooksWithPagination(userId, {
-    ...parsedSearchParams,
-    page: String(currentPage),
-  });
+  const books =
+    requestedPage === currentPage
+      ? booksNaPaginaPedida
+      : await fetchBooksWithPagination(userId, {
+          ...parsedSearchParams,
+          page: String(currentPage),
+        });
 
   return (
     <div className="flex flex-col h-full">
