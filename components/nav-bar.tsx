@@ -48,7 +48,7 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-2">
+    <nav className="flex items-center gap-1.5 py-2">
       <Link
         href="/"
         className="mr-auto flex shrink-0 items-center gap-2 font-display text-lg font-semibold tracking-tight text-foreground"
@@ -58,31 +58,36 @@ export default function NavBar() {
         </span>
         <span className="hidden sm:inline">Book Inventory</span>
       </Link>
-      {LINKS.map((link) => {
-        const ativo = link.ativo(pathname);
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              'shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
-              ativo
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-            )}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-      <ThemeToggle />
-      <button
-        onClick={sair}
-        className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-      >
-        <LogOutIcon className="h-4 w-4" aria-hidden />
-        Sair
-      </button>
+      {/* No celular a navegação vive na barra fixa do rodapé
+          (mobile-tab-bar.tsx) + no menu "Mais" (mobile-more-menu.tsx) —
+          esta fileira só aparece a partir do md. */}
+      <div className="no-scrollbar hidden items-center gap-1.5 overflow-x-auto md:flex">
+        {LINKS.map((link) => {
+          const ativo = link.ativo(pathname);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                'shrink-0 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+                ativo
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+        <ThemeToggle />
+        <button
+          onClick={sair}
+          className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOutIcon className="h-4 w-4" aria-hidden />
+          Sair
+        </button>
+      </div>
     </nav>
   );
 }

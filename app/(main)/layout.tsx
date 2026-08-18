@@ -2,6 +2,7 @@ import { Filter, FilterFallback } from '@/components/filters';
 import { MobileFilters } from '@/components/mobile-filters';
 import { Search, SearchFallback } from '@/components/search';
 import NavBar from '@/components/nav-bar';
+import MobileTabBar from '@/components/mobile-tab-bar';
 import { Suspense } from 'react';
 import { fetchCollections } from '@/lib/db/collections';
 import { getCurrentUserId } from '@/lib/auth-user';
@@ -39,8 +40,11 @@ export default async function MainLayout({
             </Suspense>
           </div>
         </div>
-        <div className="flex-1 flex flex-col p-4">{children}</div>
+        <div className="flex-1 flex flex-col p-4 pb-16 md:pb-4">{children}</div>
       </div>
+      <Suspense fallback={null}>
+        <MobileTabBar />
+      </Suspense>
     </div>
   );
 }
