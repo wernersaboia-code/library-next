@@ -118,7 +118,7 @@ export default async function Page(
               {Number(book.average_rating).toFixed(1)}
             </span>
             <span className="text-muted-foreground ml-2">
-              ({Number(book.ratings_count).toLocaleString()} avaliações)
+              ({Number(book.ratings_count).toLocaleString('pt-BR')} avaliações)
             </span>
           </div>
 

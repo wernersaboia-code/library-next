@@ -1,5 +1,5 @@
 // lib/db/queries.ts
-import { sql, and, gte, eq, lte, not, isNull, like } from 'drizzle-orm';
+import { sql, and, or, gte, eq, lte, not, isNull, like } from 'drizzle-orm';
 import { books, authors, bookToAuthor, bookCollections } from './schema';
 import type { Book } from './schema';
 import { SearchParams } from '@/lib/url-state';
@@ -43,14 +43,70 @@ const pageFilter = (pgs?: string) => {
     return undefined;
 };
 
+// `%` e `_` são curingas do LIKE: sem escapar, digitar "%" na busca casaria
+// com o acervo inteiro. `\` também precisa escapar, senão vira escape solto.
+const escaparLike = (texto: string) =>
+    texto.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+const MAX_PALAVRAS_BUSCA = 10;
+
+// A busca full-text antiga ignorava acento de graça (dicionário 'portuguese').
+// Trocando-a por ILIKE isso se perderia — "ficcao" deixaria de achar "ficção"
+// num acervo em português. `translate` recupera o comportamento sem exigir a
+// extensão `unaccent`, que não está instalada e cuja habilitação seria um DDL
+// no banco de produção por causa de um ajuste de busca.
+const ACENTOS = 'áàâãäéèêëíìîïóòôõöúùûüñçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÑÇ';
+const SEM_ACENTOS = 'aaaaaeeeeiiiiooooouuuuncAAAAAEEEEIIIIOOOOOUUUUNC';
+
+const semAcento = (valor: unknown) =>
+    sql`translate(${valor}, ${ACENTOS}, ${SEM_ACENTOS})`;
+
+/**
+ * Busca por trecho em título, título original, série, editora e autor.
+ *
+ * Antes era full-text (`title_tsv @@ websearch_to_tsquery('portuguese', …)`)
+ * só no título, o que falhava de três formas: não alcançava autor nenhum
+ * (autores moram em `authors`, via `book_to_author`), exigia palavra inteira
+ * — "histor" não achava "The Historian" — e passava títulos em inglês pelo
+ * dicionário português, que os radicaliza errado.
+ *
+ * Cada palavra digitada precisa aparecer em algum dos campos, o que deixa
+ * "stephen king" achar o autor mesmo com o nome gravado como "King, Stephen".
+ * O índice GIN de title_tsv deixa de ser usado; com ~1.6k livros por usuário
+ * a varredura é irrelevante, e a previsibilidade vale mais que o índice.
+ */
 const searchFilter = (q?: string) => {
     const termo = q?.trim();
     if (!termo) return undefined;
-    // websearch_to_tsquery nunca lança: trata aspas, apóstrofo e operadores
-    // soltos (& | !) sem derrubar a query — ao contrário de to_tsquery.
-    // 'portuguese' casa com o dicionário da coluna gerada title_tsv, o que
-    // permite o planner usar o índice GIN (idx_books_title_tsv).
-    return sql`${books.title_tsv} @@ websearch_to_tsquery('portuguese', ${termo})`;
+
+    const palavras = termo
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, MAX_PALAVRAS_BUSCA);
+    if (palavras.length === 0) return undefined;
+
+    return and(
+        ...palavras.map((palavra) => {
+            const alvo = `%${escaparLike(palavra)}%`;
+            const casa = (coluna: unknown) =>
+                sql`${semAcento(coluna)} ILIKE ${semAcento(alvo)}`;
+            return or(
+                casa(books.title),
+                casa(books.original_title),
+                casa(books.series),
+                casa(books.publisher),
+                // EXISTS, não join: `estimateTotalBooks` roda um
+                // `SELECT id FROM books` sem os joins de autor, e uma
+                // referência solta a `authors` ali quebraria a contagem.
+                sql`EXISTS (
+                    SELECT 1 FROM book_to_author ba
+                    JOIN authors a ON a.id = ba.author_id
+                    WHERE ba.book_id = ${books.id}
+                      AND ${semAcento(sql`a.name`)} ILIKE ${semAcento(alvo)}
+                )`
+            );
+        })
+    );
 };
 
 // Existia para esconder livros sem capa importados do Calibre. Livros
@@ -180,6 +236,18 @@ export async function fetchBooksWithPagination(
     );
 }
 
+/**
+ * Total de resultados do filtro atual.
+ *
+ * Antes lia `Plan Rows` de um EXPLAIN — estimativa do planner, escolhida para
+ * evitar um COUNT caro. Medido contra o acervo real, a estimativa erra por uma
+ * ordem de grandeza quando a busca casa texto: "stephen king" tem 10 livros e
+ * o planner cravava 415. Como a paginação sai daqui, o acervo anunciava 15
+ * páginas das quais 14 vinham vazias.
+ *
+ * COUNT exato: com ~1,6 mil livros por usuário a diferença é imperceptível, e
+ * um número redondo e errado é pior que alguns milissegundos.
+ */
 export async function estimateTotalBooks(
     userId: string,
     searchParams: SearchParams
@@ -188,21 +256,14 @@ export async function estimateTotalBooks(
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
     return withUser(userId, async (tx) => {
-        const explainResult = await tx.execute(sql`
-      EXPLAIN (FORMAT JSON)
-      SELECT id FROM books
-      ${whereClause ? sql`WHERE ${whereClause}` : sql``}
-    `);
-
-        // postgres-js devolve o resultado do EXPLAIN como array direto de
-        // linhas (não `{ rows: [...] }`) — mesmo padrão já usado na Task 2.
-        const rows = explainResult as unknown as { 'QUERY PLAN': unknown }[];
-        const plan = rows[0]?.['QUERY PLAN'] as
-            | [{ Plan?: { 'Plan Rows'?: number } }]
-            | undefined;
-        return plan?.[0]?.Plan?.['Plan Rows'] ?? 0;
+        const [linha] = await tx
+            .select({ total: sql<number>`count(*)::int` })
+            .from(books)
+            .where(whereClause);
+        return linha?.total ?? 0;
     });
 }
+
 
 export async function fetchBookById(userId: string, id: string) {
     const result = await withUser(userId, (tx) =>

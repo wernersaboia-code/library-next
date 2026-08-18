@@ -77,8 +77,13 @@ export function BookPagination({
                 <input key={key} type="hidden" name={key} value={value as string} />
               )
           )}
+          {/* Locale explícito: `toLocaleString()` sem argumento usa o locale
+              do ambiente, que difere entre servidor (Node) e navegador —
+              "1,609" contra "1.609". Texto divergente na hidratação derruba a
+              árvore do React (erro #418) e a página para de responder até o
+              refresh. */}
           <span className="text-sm text-muted-foreground">
-            {totalResults.toLocaleString()} resultados · página
+            {totalResults.toLocaleString('pt-BR')} resultados · página
           </span>
           <label htmlFor="ir-para-pagina" className="sr-only">
             Ir para a página
@@ -94,7 +99,7 @@ export function BookPagination({
             className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm"
           />
           <span className="text-sm text-muted-foreground">
-            de {totalPages.toLocaleString()}
+            de {totalPages.toLocaleString('pt-BR')}
           </span>
           <Button type="submit" variant="outline" size="sm">
             Ir
