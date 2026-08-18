@@ -29,6 +29,10 @@ export default function MobileTabBar() {
     <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card md:hidden">
       {itens.map((item) => {
         const ativo = item.ativo(pathname);
+        // Fallback defensivo: o tsconfig não liga noUncheckedIndexedAccess,
+        // então um href de HREFS_BARRA sem entrada em ICONES tiparia como
+        // ícone válido e só quebraria no render. Hoje os dois conjuntos
+        // batem; isso segura uma edição futura que os desalinhe.
         const Icone = ICONES[item.href] ?? LibraryIcon;
         return (
           <Link
