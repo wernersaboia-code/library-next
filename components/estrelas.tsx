@@ -11,7 +11,7 @@ function rotulo(nota: number | null, estrela: number): string {
 
 function Estrela({ parte, classe }: { parte: number; classe: string }) {
   if (parte === 0) {
-    return <StarIcon aria-hidden className={`${classe} text-gray-300`} />;
+    return <StarIcon aria-hidden className={`${classe} text-muted-foreground/40`} />;
   }
   if (parte === 1) {
     return <StarIcon aria-hidden className={`${classe} fill-yellow-400 text-yellow-400`} />;
@@ -20,7 +20,7 @@ function Estrela({ parte, classe }: { parte: number; classe: string }) {
   // acompanha o tamanho do ícone, então serve tanto à capa quanto à página.
   return (
     <span className={`relative inline-block ${classe}`}>
-      <StarIcon aria-hidden className={`${classe} absolute inset-0 text-gray-300`} />
+      <StarIcon aria-hidden className={`${classe} absolute inset-0 text-muted-foreground/40`} />
       <StarIcon
         aria-hidden
         className={`${classe} absolute inset-0 fill-yellow-400 text-yellow-400`}
@@ -69,7 +69,7 @@ export function Estrelas({
           <Estrela parte={preenchimento(nota, n)} classe={classe} />
         </button>
       ))}
-      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+      <span className="ml-2 text-sm text-muted-foreground">
         {nota === null ? 'sem nota' : formatarNota(nota)}
       </span>
     </div>

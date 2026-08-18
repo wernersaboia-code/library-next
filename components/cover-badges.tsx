@@ -34,16 +34,16 @@ export function CoverBadges({
           lido, e favorito exige lido. Empilham em linha se coincidirem. */}
       <div className="absolute right-1 top-1 flex items-center gap-1">
         {!owned && (
-          <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-medium text-white shadow">
+          <span className="rounded bg-stone-700 px-1.5 py-0.5 text-[10px] font-medium text-white shadow">
             Quero ter
           </span>
         )}
         {nextUp && (
           <span
             title="Na fila de leitura"
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 shadow"
+            className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow"
           >
-            <BookmarkIcon aria-hidden className="h-3 w-3 fill-white text-white" />
+            <BookmarkIcon aria-hidden className="h-3 w-3 fill-primary-foreground text-primary-foreground" />
             <span className="sr-only">Na fila de leitura</span>
           </span>
         )}

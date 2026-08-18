@@ -156,7 +156,7 @@ export function BooksGrid({
             Selecionar
           </Button>
         )}
-        {aviso && <span className="text-sm text-gray-500">{aviso}</span>}
+        {aviso && <span className="text-sm text-muted-foreground">{aviso}</span>}
       </div>
 
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
@@ -203,7 +203,7 @@ export function BooksGrid({
                   onClick={() => alternar(book.id)}
                   aria-pressed={marcado}
                   className={`relative block rounded-md text-left ${
-                    marcado ? 'ring-2 ring-offset-2 ring-sky-600' : ''
+                    marcado ? 'ring-2 ring-offset-2 ring-primary' : ''
                   }`}
                 >
                   {capa}
@@ -212,7 +212,7 @@ export function BooksGrid({
                     aria-hidden
                     className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${
                       marcado
-                        ? 'border-sky-600 bg-sky-600 text-white'
+                        ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-white/70 bg-black/40 text-transparent'
                     }`}
                   >

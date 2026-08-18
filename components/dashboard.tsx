@@ -12,31 +12,34 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
       label: 'Total',
       value: stats.totalBooks,
       icon: LibraryIcon,
-      color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30',
+      // Cores alinhadas ao tema (creme/âmbar) e às mesmas usadas nos selos
+      // da capa (CoverBadges): lendo=âmbar, lidos=esmeralda, abandonados=cinza.
+      // Antes eram azul/verde/roxo/cinza/laranja sem relação com o tema.
+      color: 'text-primary bg-primary/10',
     },
     {
       label: 'Lendo',
       value: stats.lendo,
       icon: BookOpenIcon,
-      color: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30',
+      color: 'text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/15',
     },
     {
       label: 'Lidos',
       value: stats.lidos,
       icon: BookmarkIcon,
-      color: 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30',
+      color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/15',
     },
     {
       label: 'Abandonados',
       value: stats.abandonados,
       icon: BookXIcon,
-      color: 'text-gray-600 bg-gray-200 dark:text-gray-300 dark:bg-gray-700',
+      color: 'text-muted-foreground bg-muted',
     },
     {
       label: 'Páginas',
       value: stats.paginasLidas,
       icon: BookOpenIcon,
-      color: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30',
+      color: 'text-primary bg-primary/10',
     },
   ];
 
