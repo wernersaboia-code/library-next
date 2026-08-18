@@ -42,3 +42,4 @@ author_import_checkpoint.json
 thumbhash_update_checkpoint.json
 # pnpm scaffold local (nao versionar)
 pnpm-workspace.yaml
+.superpowers/
