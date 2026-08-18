@@ -159,7 +159,7 @@ export function BooksGrid({
         {aviso && <span className="text-sm text-gray-500">{aviso}</span>}
       </div>
 
-      <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
         {!books?.length ? (
           <div className="col-span-full">
             <EmptyState
@@ -243,7 +243,7 @@ export function BooksGrid({
       {selecionando && (
         // Barra no rodapé: o uso principal é no celular, onde é o polegar
         // que alcança.
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-card p-3 shadow-lg">
+        <div className="fixed inset-x-0 bottom-14 z-20 border-t bg-card p-3 shadow-lg md:bottom-0">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
             <span className="text-sm font-medium">
               {selecionados.size} selecionado(s)
