@@ -47,11 +47,11 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
 
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 lg:grid-cols-5">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border"
+            className="flex min-w-[104px] shrink-0 flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border md:min-w-0"
           >
             <div className={`p-2 rounded-full mb-2 ${card.color}`}>
               <card.icon className="w-5 h-5" />
