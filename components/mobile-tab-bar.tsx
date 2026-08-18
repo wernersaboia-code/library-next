@@ -9,7 +9,7 @@ import {
   ShoppingBagIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LINKS } from './nav-bar';
+import { HREFS_BARRA, LINKS } from './nav-bar';
 import { MobileMoreMenu } from './mobile-more-menu';
 
 const ICONES: Record<string, typeof LibraryIcon> = {
@@ -18,10 +18,6 @@ const ICONES: Record<string, typeof LibraryIcon> = {
   '/proximos': BookmarkIcon,
   '/bibliotecas': LayersIcon,
 };
-
-// Ordem decidida com o dono: Acervo, Quero ter, Próximos, Bibliotecas.
-// Favoritos/Configurações/Sair ficam no menu "Mais" (mobile-more-menu.tsx).
-const HREFS_BARRA = ['/', '/desejados', '/proximos', '/bibliotecas'];
 
 export default function MobileTabBar() {
   const pathname = usePathname();
