@@ -51,7 +51,7 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex min-w-[104px] shrink-0 flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border md:min-w-0"
+            className="flex min-w-24 shrink-0 flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border md:min-w-0"
           >
             <div className={`p-2 rounded-full mb-2 ${card.color}`}>
               <card.icon className="w-5 h-5" />
