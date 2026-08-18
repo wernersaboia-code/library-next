@@ -29,7 +29,7 @@ export default function MobileTabBar() {
     <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card md:hidden">
       {itens.map((item) => {
         const ativo = item.ativo(pathname);
-        const Icone = ICONES[item.href];
+        const Icone = ICONES[item.href] ?? LibraryIcon;
         return (
           <Link
             key={item.href}
