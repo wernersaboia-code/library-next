@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './theme-toggle';
 
-const LINKS = [
+export const LINKS = [
   { href: '/', label: 'Acervo', ativo: (path: string) => path === '/' },
   {
     href: '/bibliotecas',
