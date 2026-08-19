@@ -5,7 +5,11 @@ const CAMPOS = [
   'cover_i', 'ratings_average', 'ratings_count',
 ].join(',');
 const LIMITE = 5;
-const TIMEOUT_MS = 5000;
+// Medido contra a Open Library desta rede em 2026-08-19: mediana de 7 221 ms,
+// pior amostra 8 899 ms, 3 de 5 buscas acima de 5 s. O limite anterior (5 s)
+// disparava no uso normal e a busca "não funcionava" — 503 traduzido na tela
+// como "preencha manualmente". 15 s é ~2x a mediana, com folga para variação.
+const TIMEOUT_MS = 15000;
 
 export interface ExternalBook {
   title: string;
