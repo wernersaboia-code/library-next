@@ -94,3 +94,38 @@ describe('fetchWishlist', () => {
     expect(livro?.ratings_count).toBe(1847);
   });
 });
+
+describe('ordem da lista de desejados', () => {
+  it('ordena por título, não por data de cadastro', async () => {
+    const [u] = await ctx.sql`
+      insert into app_users (email) values ('ordem@x.com') returning id`;
+    // Inseridos fora de ordem alfabética de propósito: com o ORDER BY antigo
+    // (created_at) sairiam nesta mesma ordem, e o teste passaria por engano.
+    const titulosInseridos = ['Zumbi', 'Alien', 'Ártico', '100 anos', 'Echo'];
+    for (const t of titulosInseridos) {
+      await ctx.sql`
+        insert into books (user_id, title, title_source, source, owned)
+        values (${u.id}, ${t}, ${t}, 'manual', false)`;
+    }
+
+    const { fetchWishlist } = await import('@/lib/db/queries');
+    const todos = (await fetchWishlist(u.id)).map((r) => r.title);
+
+    // Filtra para só os títulos que ESTA inserção acabou de criar, em vez de
+    // comparar o array inteiro: `fetchWishlist` não filtra por usuário no
+    // banco de teste (a suíte conecta como `postgres`, que ignora RLS — o
+    // mesmo mecanismo que test/db/rls.test.ts existe para provar de verdade,
+    // via SET LOCAL ROLE). `todos` inclui então os livros de OUTROS testes
+    // deste arquivo, que rodam antes deste no mesmo schema. Como o filtro
+    // preserva a ordem relativa do array original, e a ordenação continua
+    // sendo feita só pelo `ORDER BY title` do Postgres, isolar por conteúdo
+    // prova a ordenação sem depender de isolamento por usuário.
+    const titulos = todos.filter((t) => titulosInseridos.includes(t));
+
+    // Acento não desloca o item para o fim: a collation do banco põe "Á"
+    // logo depois de "A". Números vêm antes das letras — é onde o Postgres
+    // os põe, e o agrupamento do cliente segue essa ordem em vez de brigar
+    // com ela.
+    expect(titulos).toEqual(['100 anos', 'Alien', 'Ártico', 'Echo', 'Zumbi']);
+  });
+});

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Photo } from '@/components/photo';
 import { EmptyState } from '@/components/empty-state';
+import { agruparPorLetra, filtrarLivros } from './agrupar';
 
 interface LivroDesejado {
   id: number;
@@ -71,8 +72,13 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   const [paginas, setPaginas] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroLista, setErroLista] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
+
+  // Filtro só no cliente: a lista inteira já veio numa resposta só, e a
+  // escala é de dezenas de livros. Sem ida ao servidor, sem estado na URL.
+  const [filtro, setFiltro] = useState('');
 
   const [busca, setBusca] = useState('');
   const [buscando, setBuscando] = useState(false);
@@ -203,7 +209,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   // O nome anterior ("Já tenho") prometia mover o livro para o acervo, mas a
   // ação sempre foi apagar. O rótulo agora diz o que acontece.
   async function apagar(livro: LivroDesejado) {
-    setErro(null);
+    setErroLista(null);
     setRemovingId(livro.id);
     try {
       // Ação destrutiva e irreversível: se não conseguirmos saber se há
@@ -212,12 +218,12 @@ export function WishlistClient({ initial }: WishlistClientProps) {
       try {
         notesRes = await fetch(`/api/books/${livro.id}/notes`);
       } catch {
-        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        setErroLista('Não foi possível verificar as notas deste livro. Tente novamente.');
         return;
       }
 
       if (!notesRes.ok) {
-        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        setErroLista('Não foi possível verificar as notas deste livro. Tente novamente.');
         return;
       }
 
@@ -234,21 +240,33 @@ export function WishlistClient({ initial }: WishlistClientProps) {
       const res = await fetch(`/api/books/${livro.id}`, { method: 'DELETE' });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setErro(data?.error ?? 'Não foi possível remover o livro.');
+        setErroLista(data?.error ?? 'Não foi possível remover o livro.');
         return;
       }
       router.refresh();
     } catch {
-      setErro('Falha de rede ao remover o livro.');
+      setErroLista('Falha de rede ao remover o livro.');
     } finally {
       setRemovingId(null);
     }
   }
 
+  const visiveis = filtrarLivros(initial, filtro);
+  const secoes = agruparPorLetra(visiveis);
+  const filtrando = filtro.trim() !== '';
+  const plural = (n: number) => (n === 1 ? 'livro' : 'livros');
+
   return (
     <div className="space-y-6">
-      <div className="border rounded-md p-4 space-y-3">
-        <h2 className="text-lg font-semibold">Adicionar à lista</h2>
+      {/* Recolhido por padrão: quem chega aqui quase sempre quer VER a lista,
+          e este bloco ocupava a primeira tela inteira. `<details>` nativo em
+          vez de mais um useState — já são doze neste componente — e vem com
+          teclado e leitor de tela de graça. */}
+      <details className="border rounded-md p-4">
+        <summary className="cursor-pointer text-lg font-semibold">
+          Adicionar livro
+        </summary>
+        <div className="mt-3 space-y-3">
 
         <div>
           <Label className="block mb-1" htmlFor="wishlist-busca">
@@ -393,25 +411,77 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         </Button>
         {erro && <p className="text-sm text-red-600">{erro}</p>}
         {aviso && <p className="text-sm text-amber-600">{aviso}</p>}
-      </div>
+        </div>
+      </details>
 
       {initial.length === 0 ? (
         <EmptyState
           icone={BookmarkPlusIcon}
           titulo="Nenhum livro na lista de desejados"
-          descricao="Busque na Open Library ou preencha manualmente acima."
+          descricao='Toque em "Adicionar livro" acima para buscar na Open Library ou preencher manualmente.'
         />
       ) : (
-        <ul className="space-y-3">
-          {initial.map((livro) => (
-            <ItemDesejado
-              key={livro.id}
-              livro={livro}
-              removendo={removingId === livro.id}
-              onApagar={() => void apagar(livro)}
+        <div className="space-y-3">
+          {erroLista && <p className="text-sm text-red-600">{erroLista}</p>}
+          <div className="space-y-1">
+            <Label className="sr-only" htmlFor="wishlist-filtro">
+              Filtrar a lista
+            </Label>
+            <Input
+              id="wishlist-filtro"
+              type="search"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Filtrar por título ou autor..."
             />
-          ))}
-        </ul>
+            {/* O contador acompanha o filtro: um número fixo contradiria o
+                que está na tela assim que a lista fosse recortada. */}
+            <p className="text-sm text-muted-foreground">
+              {filtrando
+                ? `${visiveis.length} de ${initial.length} ${plural(initial.length)}`
+                : `${initial.length} ${plural(initial.length)}`}
+            </p>
+          </div>
+
+          {visiveis.length === 0 ? (
+            // Estado próprio: o EmptyState de lista vazia diria a coisa
+            // errada — a lista tem livros, o filtro é que não achou nenhum.
+            <div className="rounded-md border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Nenhum livro casa com “{filtro.trim()}”.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setFiltro('')}
+              >
+                Limpar filtro
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {secoes.map((secao, i) => (
+                <section key={`${secao.letra}-${i}`}>
+                  <h2 className="mb-2 border-b pb-1 font-display text-sm font-semibold text-muted-foreground">
+                    {secao.letra}
+                  </h2>
+                  <ul className="space-y-3">
+                    {secao.livros.map((livro) => (
+                      <ItemDesejado
+                        key={livro.id}
+                        livro={livro}
+                        removendo={removingId === livro.id}
+                        onApagar={() => void apagar(livro)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
