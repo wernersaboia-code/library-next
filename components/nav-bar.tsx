@@ -20,6 +20,11 @@ export const LINKS = [
     ativo: (path: string) => path.startsWith('/proximos'),
   },
   {
+    href: '/leituras',
+    label: 'Leituras',
+    ativo: (path: string) => path.startsWith('/leituras'),
+  },
+  {
     href: '/favoritos',
     label: 'Favoritos',
     ativo: (path: string) => path.startsWith('/favoritos'),
@@ -35,6 +40,13 @@ export const LINKS = [
     ativo: (path: string) => path.startsWith('/settings'),
   },
 ];
+
+// Quais seções ficam na barra fixa do celular, nesta ordem. Mora aqui, ao
+// lado de LINKS, porque a barra (mobile-tab-bar) e o menu "Mais"
+// (mobile-more-menu) precisam da mesma lista e são justamente as duas metades
+// da mesma decisão: o "Mais" é o complemento desta lista. Separadas, uma
+// seção nova entrava em LINKS e sumia do celular sem erro nenhum.
+export const HREFS_BARRA = ['/', '/desejados', '/proximos', '/bibliotecas'];
 
 export default function NavBar() {
   const router = useRouter();

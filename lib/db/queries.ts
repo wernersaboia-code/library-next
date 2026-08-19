@@ -415,6 +415,44 @@ export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> 
     );
 }
 
+/**
+ * O histórico de leitura: o que já foi terminado.
+ *
+ * Ordem cronológica inversa — o que se acabou de ler vem primeiro. `nulls
+ * last` é o ponto todo: por padrão o Postgres põe NULL no topo de um DESC, e
+ * como boa parte do acervo foi marcada como lida sem registrar a data, o topo
+ * da página seria justamente o que não tem informação nenhuma. Sem data,
+ * desempata por título.
+ */
+export async function fetchLidos(userId: string): Promise<LivroDaEstante[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select(colunasDaEstante)
+            .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
+            .where(eq(books.read_status, 'lido'))
+            .groupBy(books.id)
+            .orderBy(sql`${books.date_finished} desc nulls last`, books.title)
+    );
+}
+
+/** O que foi largado no meio. Ordem alfabética, como as demais estantes. */
+export async function fetchAbandonados(
+    userId: string
+): Promise<LivroDaEstante[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select(colunasDaEstante)
+            .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
+            .where(eq(books.read_status, 'abandonado'))
+            .groupBy(books.id)
+            .orderBy(books.title)
+    );
+}
+
 // — Painel (estatísticas) —
 
 export interface PeriodoStats {

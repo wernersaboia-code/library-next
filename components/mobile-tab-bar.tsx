@@ -9,7 +9,7 @@ import {
   ShoppingBagIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LINKS } from './nav-bar';
+import { HREFS_BARRA, LINKS } from './nav-bar';
 import { MobileMoreMenu } from './mobile-more-menu';
 
 const ICONES: Record<string, typeof LibraryIcon> = {
@@ -18,10 +18,6 @@ const ICONES: Record<string, typeof LibraryIcon> = {
   '/proximos': BookmarkIcon,
   '/bibliotecas': LayersIcon,
 };
-
-// Ordem decidida com o dono: Acervo, Quero ter, Próximos, Bibliotecas.
-// Favoritos/Configurações/Sair ficam no menu "Mais" (mobile-more-menu.tsx).
-const HREFS_BARRA = ['/', '/desejados', '/proximos', '/bibliotecas'];
 
 export default function MobileTabBar() {
   const pathname = usePathname();
@@ -33,7 +29,11 @@ export default function MobileTabBar() {
     <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card md:hidden">
       {itens.map((item) => {
         const ativo = item.ativo(pathname);
-        const Icone = ICONES[item.href];
+        // Fallback defensivo: o tsconfig não liga noUncheckedIndexedAccess,
+        // então um href de HREFS_BARRA sem entrada em ICONES tiparia como
+        // ícone válido e só quebraria no render. Hoje os dois conjuntos
+        // batem; isso segura uma edição futura que os desalinhe.
+        const Icone = ICONES[item.href] ?? LibraryIcon;
         return (
           <Link
             key={item.href}

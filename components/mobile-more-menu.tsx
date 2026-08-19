@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  BookOpenIcon,
   HeartIcon,
   LogOutIcon,
   MoreHorizontalIcon,
@@ -11,11 +12,27 @@ import {
   XIcon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { HREFS_BARRA, LINKS } from './nav-bar';
 import { ThemeToggle } from './theme-toggle';
 
+// Ícone por seção. `?? BookOpenIcon` não é decoração: o tsconfig não liga
+// `noUncheckedIndexedAccess`, então uma chave ausente aqui tiparia como
+// componente válido e só quebraria em execução, ao renderizar.
+const ICONES_MAIS: Record<string, typeof BookOpenIcon> = {
+  '/leituras': BookOpenIcon,
+  '/favoritos': HeartIcon,
+  '/settings': SettingsIcon,
+};
+
+// O complemento exato da barra fixa: toda seção de LINKS que não está lá
+// aparece aqui. Antes esta lista era escrita à mão, e uma seção nova podia
+// existir no desktop e sumir do celular sem erro de tipo nem de execução.
+const ITENS_MAIS = LINKS.filter((link) => !HREFS_BARRA.includes(link.href));
+
 /**
- * Itens que não cabem na barra fixa do celular (mobile-tab-bar.tsx):
- * Favoritos, Configurações, o alternador de tema e Sair. Mesmo padrão de
+ * As seções que não cabem na barra fixa do celular (mobile-tab-bar.tsx),
+ * derivadas de LINKS em vez de repetidas aqui — ver ITENS_MAIS abaixo —,
+ * mais o alternador de tema e o Sair, que não são rotas. Mesmo padrão de
  * gatilho + painel que mobile-filters.tsx já usa, com o painel entrando
  * pela lateral (mesma estrutura, evita inventar um segundo padrão de
  * painel no app).
@@ -83,22 +100,20 @@ export function MobileMoreMenu() {
               </button>
             </div>
             <div className="flex flex-col gap-1 p-3">
-              <Link
-                href="/favoritos"
-                onClick={() => setAberto(false)}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                <HeartIcon className="h-4 w-4" aria-hidden />
-                Favoritos
-              </Link>
-              <Link
-                href="/settings"
-                onClick={() => setAberto(false)}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                <SettingsIcon className="h-4 w-4" aria-hidden />
-                Configurações
-              </Link>
+              {ITENS_MAIS.map((item) => {
+                const Icone = ICONES_MAIS[item.href] ?? BookOpenIcon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setAberto(false)}
+                    className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                  >
+                    <Icone className="h-4 w-4" aria-hidden />
+                    {item.label}
+                  </Link>
+                );
+              })}
               <div className="flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-foreground">
                 Tema
                 <ThemeToggle />
