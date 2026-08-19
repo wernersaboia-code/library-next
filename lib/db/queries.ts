@@ -348,6 +348,7 @@ export async function fetchWishlist(userId: string) {
       .select({
         id: books.id,
         title: books.title,
+        original_title: books.original_title,
         publication_year: books.publication_year,
         num_pages: books.num_pages,
         createdAt: books.createdAt,

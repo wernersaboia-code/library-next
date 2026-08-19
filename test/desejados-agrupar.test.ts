@@ -3,7 +3,11 @@ import {
   agruparPorLetra, filtrarLivros, letraInicial, normalizar,
 } from '@/app/(main)/desejados/agrupar';
 
-const livro = (title: string, authors: string[] | null = []) => ({ title, authors });
+const livro = (
+  title: string,
+  authors: string[] | null = [],
+  original_title: string | null = null
+) => ({ title, original_title, authors });
 
 describe('normalizar', () => {
   it('tira acento e caixa', () => {
@@ -21,6 +25,7 @@ describe('filtrarLivros', () => {
     livro('O Iluminado', ['Stephen King']),
     livro('Ficção Científica', null),
     livro('Duna', ['Frank Herbert']),
+    livro('A Revolução dos Bichos', ['George Orwell'], 'Animal Farm'),
   ];
 
   it('termo vazio devolve tudo, sem copiar em vão', () => {
@@ -36,6 +41,12 @@ describe('filtrarLivros', () => {
 
   it('casa o autor, não só o título', () => {
     expect(filtrarLivros(livros, 'herbert').map((l) => l.title)).toEqual(['Duna']);
+  });
+
+  it('casa o título original, não só o título traduzido', () => {
+    expect(filtrarLivros(livros, 'animal farm').map((l) => l.title)).toEqual([
+      'A Revolução dos Bichos',
+    ]);
   });
 
   it('ignora acento nos dois sentidos', () => {

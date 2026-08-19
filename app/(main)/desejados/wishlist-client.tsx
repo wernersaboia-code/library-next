@@ -13,6 +13,7 @@ import { agruparPorLetra, filtrarLivros } from './agrupar';
 interface LivroDesejado {
   id: number;
   title: string;
+  original_title: string | null;
   publication_year: number | null;
   num_pages: number | null;
   createdAt: Date | string;
@@ -74,6 +75,10 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   const [erro, setErro] = useState<string | null>(null);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Sem isso, a única forma de saber se o cadastro deu certo era ver o
+  // contador da lista mudar — a ordem alfabética não põe o livro novo perto
+  // do formulário como a ordem cronológica antiga fazia.
+  const [sucesso, setSucesso] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
   // Filtro só no cliente: a lista inteira já veio numa resposta só, e a
@@ -118,6 +123,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   async function escolher(candidato: Candidato) {
     setErroBusca(null);
     setAviso(null);
+    setSucesso(null);
     setIsSaving(true);
     try {
       const res = await fetch('/api/books', {
@@ -156,6 +162,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         }
       }
 
+      setSucesso(`“${candidato.title}” adicionado à lista.`);
       setBusca('');
       setCandidatos(null);
       router.refresh();
@@ -174,6 +181,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
     }
 
     setErro(null);
+    setSucesso(null);
     setIsSaving(true);
     try {
       const res = await fetch('/api/books', {
@@ -193,6 +201,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         setErro(data?.error ?? 'Não foi possível adicionar o livro.');
         return;
       }
+      setSucesso(`“${tituloAparado}” adicionado à lista.`);
       setTitulo('');
       setTituloOriginal('');
       setAutor('');
@@ -411,6 +420,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         </Button>
         {erro && <p className="text-sm text-red-600">{erro}</p>}
         {aviso && <p className="text-sm text-amber-600">{aviso}</p>}
+        {sucesso && <p className="text-sm text-green-600">{sucesso}</p>}
         </div>
       </details>
 
@@ -432,7 +442,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
               type="search"
               value={filtro}
               onChange={(e) => setFiltro(e.target.value)}
-              placeholder="Filtrar por título ou autor..."
+              placeholder="Filtrar por título, título original ou autor..."
             />
             {/* O contador acompanha o filtro: um número fixo contradiria o
                 que está na tela assim que a lista fosse recortada. */}

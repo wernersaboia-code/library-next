@@ -9,6 +9,7 @@
 /** O mínimo que estas funções exigem de um livro. */
 export interface LivroFiltravel {
   title: string;
+  original_title: string | null;
   authors: string[] | null;
 }
 
@@ -28,8 +29,9 @@ export function normalizar(texto: string): string {
 }
 
 /**
- * Livros cujo título OU autor contém o termo. Termo vazio devolve o próprio
- * array recebido — sem cópia, porque o caso comum é não haver filtro.
+ * Livros cujo título, título original OU autor contém o termo. Termo vazio
+ * devolve o próprio array recebido — sem cópia, porque o caso comum é não
+ * haver filtro.
  */
 export function filtrarLivros<T extends LivroFiltravel>(
   livros: T[],
@@ -39,8 +41,8 @@ export function filtrarLivros<T extends LivroFiltravel>(
   if (!alvo) return livros;
 
   return livros.filter((livro) => {
-    const campos = [livro.title, ...(livro.authors ?? [])];
-    return campos.some((campo) => normalizar(campo).includes(alvo));
+    const campos = [livro.title, livro.original_title, ...(livro.authors ?? [])];
+    return campos.some((campo) => campo != null && normalizar(campo).includes(alvo));
   });
 }
 
