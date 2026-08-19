@@ -26,7 +26,11 @@ export default function MobileTabBar() {
   );
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card md:hidden">
+    // touch-pan-y: os botões das pontas (Acervo à esquerda, Mais à direita)
+    // ficam colados na borda da tela (inset-x-0). Sem isso, um leve arrasto
+    // lateral ao tocar ali é lido pelo Chrome/WebKit no iOS como o gesto de
+    // voltar/trocar de app, em vez de um toque no botão.
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card touch-pan-y md:hidden">
       {itens.map((item) => {
         const ativo = item.ativo(pathname);
         // Fallback defensivo: o tsconfig não liga noUncheckedIndexedAccess,
