@@ -72,6 +72,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   const [paginas, setPaginas] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroLista, setErroLista] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
@@ -208,7 +209,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
   // O nome anterior ("Já tenho") prometia mover o livro para o acervo, mas a
   // ação sempre foi apagar. O rótulo agora diz o que acontece.
   async function apagar(livro: LivroDesejado) {
-    setErro(null);
+    setErroLista(null);
     setRemovingId(livro.id);
     try {
       // Ação destrutiva e irreversível: se não conseguirmos saber se há
@@ -217,12 +218,12 @@ export function WishlistClient({ initial }: WishlistClientProps) {
       try {
         notesRes = await fetch(`/api/books/${livro.id}/notes`);
       } catch {
-        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        setErroLista('Não foi possível verificar as notas deste livro. Tente novamente.');
         return;
       }
 
       if (!notesRes.ok) {
-        setErro('Não foi possível verificar as notas deste livro. Tente novamente.');
+        setErroLista('Não foi possível verificar as notas deste livro. Tente novamente.');
         return;
       }
 
@@ -239,12 +240,12 @@ export function WishlistClient({ initial }: WishlistClientProps) {
       const res = await fetch(`/api/books/${livro.id}`, { method: 'DELETE' });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setErro(data?.error ?? 'Não foi possível remover o livro.');
+        setErroLista(data?.error ?? 'Não foi possível remover o livro.');
         return;
       }
       router.refresh();
     } catch {
-      setErro('Falha de rede ao remover o livro.');
+      setErroLista('Falha de rede ao remover o livro.');
     } finally {
       setRemovingId(null);
     }
@@ -417,10 +418,11 @@ export function WishlistClient({ initial }: WishlistClientProps) {
         <EmptyState
           icone={BookmarkPlusIcon}
           titulo="Nenhum livro na lista de desejados"
-          descricao="Busque na Open Library ou preencha manualmente acima."
+          descricao='Toque em "Adicionar livro" acima para buscar na Open Library ou preencher manualmente.'
         />
       ) : (
         <div className="space-y-3">
+          {erroLista && <p className="text-sm text-red-600">{erroLista}</p>}
           <div className="space-y-1">
             <Label className="sr-only" htmlFor="wishlist-filtro">
               Filtrar a lista
@@ -460,8 +462,8 @@ export function WishlistClient({ initial }: WishlistClientProps) {
             </div>
           ) : (
             <div className="space-y-5">
-              {secoes.map((secao) => (
-                <section key={secao.letra}>
+              {secoes.map((secao, i) => (
+                <section key={`${secao.letra}-${i}`}>
                   <h2 className="mb-2 border-b pb-1 font-display text-sm font-semibold text-muted-foreground">
                     {secao.letra}
                   </h2>
