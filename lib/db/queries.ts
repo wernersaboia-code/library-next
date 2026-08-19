@@ -453,29 +453,41 @@ const colunasDaEstante = {
     authors: sql<string[]>`array_remove(array_agg(${authors.name}), NULL)`,
 };
 
-/** A fila de leitura: o que o dono decidiu ler antes dos outros. */
-export async function fetchNextUp(userId: string): Promise<LivroDaEstante[]> {
+/**
+ * A fila de leitura: o que o dono decidiu ler antes dos outros.
+ *
+ * `search` usa o mesmo `searchFilter` do acervo principal — a barra de busca
+ * do layout fica montada em toda página (inclusive esta), mas até aqui só o
+ * acervo lia o parâmetro `?search=` da URL; nas estantes ele era ignorado.
+ */
+export async function fetchNextUp(
+    userId: string,
+    search?: string
+): Promise<LivroDaEstante[]> {
     return withUser(userId, (tx) =>
         tx
             .select(colunasDaEstante)
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
             .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-            .where(eq(books.next_up, true))
+            .where(and(eq(books.next_up, true), searchFilter(search)))
             .groupBy(books.id)
             .orderBy(books.title)
     );
 }
 
 /** A lista curta: lidos que superaram as expectativas. */
-export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> {
+export async function fetchFavorites(
+    userId: string,
+    search?: string
+): Promise<LivroDaEstante[]> {
     return withUser(userId, (tx) =>
         tx
             .select(colunasDaEstante)
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
             .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-            .where(eq(books.favorite, true))
+            .where(and(eq(books.favorite, true), searchFilter(search)))
             .groupBy(books.id)
             .orderBy(books.title)
     );
@@ -490,22 +502,9 @@ export async function fetchFavorites(userId: string): Promise<LivroDaEstante[]> 
  * da página seria justamente o que não tem informação nenhuma. Sem data,
  * desempata por título.
  */
-export async function fetchLidos(userId: string): Promise<LivroDaEstante[]> {
-    return withUser(userId, (tx) =>
-        tx
-            .select(colunasDaEstante)
-            .from(books)
-            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
-            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-            .where(eq(books.read_status, 'lido'))
-            .groupBy(books.id)
-            .orderBy(sql`${books.date_finished} desc nulls last`, books.title)
-    );
-}
-
-/** O que foi largado no meio. Ordem alfabética, como as demais estantes. */
-export async function fetchAbandonados(
-    userId: string
+export async function fetchLidos(
+    userId: string,
+    search?: string
 ): Promise<LivroDaEstante[]> {
     return withUser(userId, (tx) =>
         tx
@@ -513,7 +512,24 @@ export async function fetchAbandonados(
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
             .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-            .where(eq(books.read_status, 'abandonado'))
+            .where(and(eq(books.read_status, 'lido'), searchFilter(search)))
+            .groupBy(books.id)
+            .orderBy(sql`${books.date_finished} desc nulls last`, books.title)
+    );
+}
+
+/** O que foi largado no meio. Ordem alfabética, como as demais estantes. */
+export async function fetchAbandonados(
+    userId: string,
+    search?: string
+): Promise<LivroDaEstante[]> {
+    return withUser(userId, (tx) =>
+        tx
+            .select(colunasDaEstante)
+            .from(books)
+            .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
+            .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
+            .where(and(eq(books.read_status, 'abandonado'), searchFilter(search)))
             .groupBy(books.id)
             .orderBy(books.title)
     );

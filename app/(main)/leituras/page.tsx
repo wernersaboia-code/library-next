@@ -23,14 +23,15 @@ export default async function LeiturasPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const aba = abaValida(searchParams.aba);
+  const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
   const userId = await getCurrentUserId();
 
   // Só a lista da aba ativa é buscada: abas no cliente exigiriam trazer as
   // duas para mostrar uma.
   const livros =
     aba === 'abandonados'
-      ? await fetchAbandonados(userId)
-      : await fetchLidos(userId);
+      ? await fetchAbandonados(userId, search)
+      : await fetchLidos(userId, search);
 
   const plural = livros.length === 1 ? 'livro' : 'livros';
 
@@ -53,7 +54,14 @@ export default async function LeiturasPage(props: {
         {ABAS.map((item) => (
           <Link
             key={item.id}
-            href={`/leituras?aba=${item.id}`}
+            // Sem levar `search` adiante, trocar de aba com uma busca ativa
+            // limpava o filtro em silêncio — mesma falha que a busca em si
+            // tinha aqui antes desta correção.
+            href={
+              search
+                ? `/leituras?aba=${item.id}&search=${encodeURIComponent(search)}`
+                : `/leituras?aba=${item.id}`
+            }
             aria-current={aba === item.id ? 'page' : undefined}
             className={cn(
               'rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',

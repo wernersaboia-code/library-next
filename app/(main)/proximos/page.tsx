@@ -3,9 +3,13 @@ import { fetchNextUp } from '@/lib/db/queries';
 import { Estante } from '@/components/estante';
 import { BookmarkIcon } from 'lucide-react';
 
-export default async function ProximosPage() {
+export default async function ProximosPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+  const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
   const userId = await getCurrentUserId();
-  const livros = await fetchNextUp(userId);
+  const livros = await fetchNextUp(userId, search);
 
   return (
     <div className="p-4 space-y-4">

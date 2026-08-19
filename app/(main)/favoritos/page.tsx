@@ -3,9 +3,13 @@ import { fetchFavorites } from '@/lib/db/queries';
 import { Estante } from '@/components/estante';
 import { HeartIcon } from 'lucide-react';
 
-export default async function FavoritosPage() {
+export default async function FavoritosPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+  const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
   const userId = await getCurrentUserId();
-  const livros = await fetchFavorites(userId);
+  const livros = await fetchFavorites(userId, search);
 
   return (
     <div className="p-4 space-y-4">

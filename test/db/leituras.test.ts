@@ -85,3 +85,19 @@ describe('fetchAbandonados', () => {
     expect(titulos).toEqual(['Arrastado demais', 'Zumbi entediante']);
   });
 });
+
+// A barra de busca do layout fica montada em toda página, mas até esta
+// correção só o acervo principal lia `?search=` — em Leituras era ignorado.
+describe('busca dentro de Leituras', () => {
+  it('filtra lidos sem trazer abandonados', async () => {
+    const { fetchLidos } = await import('@/lib/db/queries');
+    const titulos = (await fetchLidos(userId, 'zebra')).map((l) => l.title);
+    expect(titulos).toEqual(['Zebra sem data']);
+  });
+
+  it('filtra abandonados sem trazer lidos', async () => {
+    const { fetchAbandonados } = await import('@/lib/db/queries');
+    const titulos = (await fetchAbandonados(userId, 'zumbi')).map((l) => l.title);
+    expect(titulos).toEqual(['Zumbi entediante']);
+  });
+});

@@ -35,6 +35,15 @@ describe('fetchNextUp', () => {
     const livros = await fetchNextUp(userId);
     expect(livros.map((l) => l.title).sort()).toEqual(['Na fila', 'Também fila']);
   });
+
+  // A barra de busca do layout fica montada em toda página, mas até esta
+  // correção só o acervo principal lia `?search=` — aqui era ignorado, e a
+  // busca parecia travada em Próximos.
+  it('a busca filtra a fila, sem trazer livros fora dela', async () => {
+    const { fetchNextUp } = await import('@/lib/db/queries');
+    const livros = await fetchNextUp(userId, 'também');
+    expect(livros.map((l) => l.title)).toEqual(['Também fila']);
+  });
 });
 
 describe('fetchFavorites', () => {
@@ -44,5 +53,11 @@ describe('fetchFavorites', () => {
     expect(livros).toHaveLength(1);
     expect(livros[0].title).toBe('Favorito');
     expect(Number(livros[0].my_rating)).toBe(4.5);
+  });
+
+  it('a busca sem casar nenhum favorito devolve lista vazia', async () => {
+    const { fetchFavorites } = await import('@/lib/db/queries');
+    const livros = await fetchFavorites(userId, 'zzz-inexistente');
+    expect(livros).toEqual([]);
   });
 });
