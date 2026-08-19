@@ -364,7 +364,11 @@ export async function fetchWishlist(userId: string) {
       .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
       .where(and(eq(books.source, 'manual'), eq(books.owned, false)))
       .groupBy(books.id)
-      .orderBy(books.createdAt)
+      // Alfabética, não cronológica: a lista é para procurar um título
+      // específico, não para ver o que entrou por último. A ordenação fica
+      // só aqui — o cliente agrupa por letra a partir desta ordem, sem
+      // reordenar, para não existirem duas ordens que possam divergir.
+      .orderBy(books.title)
   );
 }
 
