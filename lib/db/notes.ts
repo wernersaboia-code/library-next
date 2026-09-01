@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { withUser } from './with-user';
 import { highlights } from './schema';
 
@@ -40,3 +40,37 @@ export const fetchNotes = cache(
     }));
   }
 );
+
+export interface NoteComment {
+  id: string;
+  note: string | null;
+}
+
+/**
+ * O comentário (highlight `kind: 'note'`) de cada livro em `bookIds`, numa
+ * consulta só. Existia um componente por livro em Quero ter que buscava o
+ * seu próprio comentário ao montar — com dezenas de livros na lista, isso
+ * virava dezenas de conexões simultâneas ao Postgres e estourava o limite do
+ * pooler do Supabase (200 clientes), derrubando o site inteiro. A página
+ * busca aqui, de uma vez, e passa o resultado como estado inicial.
+ */
+export async function fetchNoteComments(
+  userId: string,
+  bookIds: number[]
+): Promise<Map<number, NoteComment>> {
+  if (bookIds.length === 0) return new Map();
+
+  const rows = await withUser(userId, (tx) =>
+    tx
+      .select({ id: highlights.id, bookId: highlights.bookId, note: highlights.note })
+      .from(highlights)
+      .where(and(inArray(highlights.bookId, bookIds), eq(highlights.kind, 'note')))
+      .orderBy(asc(highlights.createdAt))
+  );
+
+  const porLivro = new Map<number, NoteComment>();
+  for (const r of rows) {
+    if (!porLivro.has(r.bookId)) porLivro.set(r.bookId, { id: r.id, note: r.note });
+  }
+  return porLivro;
+}

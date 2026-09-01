@@ -1,10 +1,12 @@
 import { fetchWishlist } from '@/lib/db/queries';
+import { fetchNoteComments } from '@/lib/db/notes';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { WishlistClient } from './wishlist-client';
 
 export default async function DesejadosPage() {
   const userId = await getCurrentUserId();
   const livros = await fetchWishlist(userId);
+  const comentarios = await fetchNoteComments(userId, livros.map((l) => l.id));
 
   return (
     <div className="max-w-2xl mx-auto w-full p-4 space-y-6">
@@ -15,7 +17,10 @@ export default async function DesejadosPage() {
           do acervo importado do Calibre.
         </p>
       </div>
-      <WishlistClient initial={livros} />
+      <WishlistClient
+        initial={livros}
+        initialComments={Object.fromEntries(comentarios)}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookmarkPlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,14 @@ interface LivroDesejado {
   ratings_count: number | null;
 }
 
+interface ComentarioInicial {
+  id: string;
+  note: string | null;
+}
+
 interface WishlistClientProps {
   initial: LivroDesejado[];
+  initialComments: Record<number, ComentarioInicial>;
 }
 
 interface Note {
@@ -63,7 +69,7 @@ function formatarNota(
   return `${nota} ★ · ${votos.toLocaleString('pt-BR')} ${plural}`;
 }
 
-export function WishlistClient({ initial }: WishlistClientProps) {
+export function WishlistClient({ initial, initialComments }: WishlistClientProps) {
   const router = useRouter();
 
   const [titulo, setTitulo] = useState('');
@@ -484,6 +490,7 @@ export function WishlistClient({ initial }: WishlistClientProps) {
                         livro={livro}
                         removendo={removingId === livro.id}
                         onApagar={() => void apagar(livro)}
+                        comentarioInicial={initialComments[livro.id]}
                       />
                     ))}
                   </ul>
@@ -501,10 +508,12 @@ function ItemDesejado({
   livro,
   removendo,
   onApagar,
+  comentarioInicial,
 }: {
   livro: LivroDesejado;
   removendo: boolean;
   onApagar: () => void;
+  comentarioInicial?: ComentarioInicial;
 }) {
   const router = useRouter();
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -603,7 +612,7 @@ function ItemDesejado({
 
       {erroCapa && <p className="text-sm text-red-600">{erroCapa}</p>}
 
-      <ComentarioLivro bookId={livro.id} />
+      <ComentarioLivro bookId={livro.id} initial={comentarioInicial} />
     </li>
   );
 }
@@ -611,40 +620,24 @@ function ItemDesejado({
 /**
  * Um comentário por livro desejado, gravado como highlight `kind: 'note'`
  * (AD-8) — o mesmo formato usado na página do livro.
+ *
+ * O estado inicial vem do servidor (a página busca o de todos os livros de
+ * uma vez); nada aqui busca ao montar. Cada item chegou a fazer sua própria
+ * requisição ao montar, e com dezenas de livros na lista isso virava uma
+ * rajada de conexões simultâneas ao Postgres que estourava o limite do
+ * pooler do Supabase e derrubava o site.
  */
-function ComentarioLivro({ bookId }: { bookId: number }) {
-  const [comentario, setComentario] = useState('');
-  const [noteId, setNoteId] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(true);
+function ComentarioLivro({
+  bookId,
+  initial,
+}: {
+  bookId: number;
+  initial?: ComentarioInicial;
+}) {
+  const [comentario, setComentario] = useState(initial?.note ?? '');
+  const [noteId, setNoteId] = useState<string | null>(initial?.id ?? null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    let ativo = true;
-    (async () => {
-      try {
-        const res = await fetch(`/api/books/${bookId}/notes`);
-        if (!res.ok) {
-          if (ativo) setErro('Não foi possível carregar o comentário.');
-          return;
-        }
-        const notas = (await res.json()) as Note[];
-        const existente = notas.find((n) => n.kind === 'note');
-        if (!ativo) return;
-        if (existente) {
-          setNoteId(existente.id);
-          setComentario(existente.note ?? '');
-        }
-      } catch {
-        if (ativo) setErro('Falha de rede ao carregar o comentário.');
-      } finally {
-        if (ativo) setCarregando(false);
-      }
-    })();
-    return () => {
-      ativo = false;
-    };
-  }, [bookId]);
 
   async function salvar() {
     const texto = comentario.trim();
@@ -691,14 +684,13 @@ function ComentarioLivro({ bookId }: { bookId: number }) {
         className="flex w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm"
         value={comentario}
         onChange={(e) => setComentario(e.target.value)}
-        placeholder={carregando ? 'Carregando...' : 'Por que você quer este livro?'}
-        disabled={carregando}
+        placeholder="Por que você quer este livro?"
       />
       <Button
         type="button"
         size="sm"
         onClick={() => void salvar()}
-        disabled={salvando || carregando}
+        disabled={salvando}
       >
         {salvando ? 'Salvando...' : 'Salvar comentário'}
       </Button>
