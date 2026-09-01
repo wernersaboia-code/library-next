@@ -53,14 +53,24 @@ export async function searchExternalBooks(query: string): Promise<ExternalBook[]
     throw new ExternalSearchError();
   }
 
-  return (data.docs ?? []).slice(0, LIMITE).map((doc) => ({
-    title: typeof doc.title === 'string' ? doc.title : 'Sem título',
-    author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
-      ? doc.author_name[0] : null,
-    publicationYear: numeroOuNulo(doc.first_publish_year),
-    numPages: numeroOuNulo(doc.number_of_pages_median),
-    coverId: numeroOuNulo(doc.cover_i),
-    ratingsAverage: numeroOuNulo(doc.ratings_average),
-    ratingsCount: numeroOuNulo(doc.ratings_count),
-  }));
+  return (data.docs ?? []).slice(0, LIMITE).map((doc) => {
+    // A Open Library manda `ratings_average: 0, ratings_count: 0` para livro
+    // sem nenhuma avaliação — não omite os campos. Zero votos é "sem
+    // avaliação", e nota sem votos não existe (AD-3): os dois vão juntos ou
+    // não vão. Sem isto, escolher um desses livros em "Quero ter" mandava
+    // `ratingsCount: 0` ao POST /api/books, que rejeita com "Número de votos
+    // inválido" e o livro não entrava na lista.
+    const votos = numeroOuNulo(doc.ratings_count);
+    const temAvaliacao = votos !== null && votos > 0;
+    return {
+      title: typeof doc.title === 'string' ? doc.title : 'Sem título',
+      author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
+        ? doc.author_name[0] : null,
+      publicationYear: numeroOuNulo(doc.first_publish_year),
+      numPages: numeroOuNulo(doc.number_of_pages_median),
+      coverId: numeroOuNulo(doc.cover_i),
+      ratingsAverage: temAvaliacao ? numeroOuNulo(doc.ratings_average) : null,
+      ratingsCount: temAvaliacao ? votos : null,
+    };
+  });
 }

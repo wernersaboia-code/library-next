@@ -35,6 +35,19 @@ describe('searchExternalBooks', () => {
     expect(livro.author).toBeNull();
   });
 
+  it('ratings_count: 0 explícito da API também vira null (não trava o cadastro)', async () => {
+    // A Open Library manda `ratings_average: 0, ratings_count: 0` para livro
+    // sem nenhuma avaliação. Sem tratar, escolher esse livro em "Quero ter"
+    // mandava `ratingsCount: 0` ao POST /api/books, que responde 400
+    // "Número de votos inválido" e o livro não entrava na lista.
+    vi.stubGlobal('fetch', vi.fn(async () => resposta([{
+      title: 'Sem Votos', ratings_average: 0, ratings_count: 0,
+    }])));
+    const [livro] = await searchExternalBooks('x');
+    expect(livro.ratingsCount).toBeNull();
+    expect(livro.ratingsAverage).toBeNull();
+  });
+
   it('devolve no máximo 5 resultados', async () => {
     const docs = Array.from({ length: 12 }, (_, i) => ({ title: `L${i}` }));
     vi.stubGlobal('fetch', vi.fn(async () => resposta(docs)));
