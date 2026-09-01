@@ -5,19 +5,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-// Tempo de silêncio antes de buscar. Curto o bastante para parecer imediato,
-// longo o bastante para uma palavra digitada inteira virar UMA navegação.
-const DEBOUNCE_MS = 350;
-
 /**
  * Campo de busca. A URL é a fonte da verdade; o campo é estado local que a
- * acompanha.
- *
- * Havia aqui um `<Form>` cujo `onChange` chamava `requestSubmit()` a cada
- * tecla, com um "backpressure" de 300ms que reenviava o formulário ao fim da
- * janela. Na prática cada letra virava uma navegação de servidor e a página
- * travava enquanto se digitava. O debounce abaixo faz o que aquele mecanismo
- * prometia, sem a rajada de submits.
+ * acompanha. Busca só ao confirmar (Enter ou o botão de busca do teclado no
+ * celular) — nada de buscar enquanto se digita. Um debounce automático já
+ * existiu aqui, mas disparava no meio de nomes mais longos, antes de a
+ * pessoa terminar de digitar.
  *
  * Duas correções vêm junto, ambas do mesmo `/?search=` fixo de antes:
  * os outros parâmetros (filtros, biblioteca) eram descartados a cada busca, e
@@ -59,15 +52,6 @@ export function Search() {
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     });
   }
-
-  useEffect(() => {
-    if (texto === ultimoEnviado.current) return;
-    const id = setTimeout(() => navegar(texto), DEBOUNCE_MS);
-    return () => clearTimeout(id);
-    // `navegar` é recriada a cada render; incluí-la reiniciaria o timer sem
-    // parar, e o debounce nunca fecharia.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texto]);
 
   return (
     <form
