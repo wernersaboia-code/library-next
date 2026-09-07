@@ -150,7 +150,10 @@ const seriesFilter = (series?: string) => {
 
 const publisherFilter = (pub?: string) => {
     if (!pub) return undefined;
-    return like(books.publisher, `%${pub}%`);
+    // O valor vem da URL, mas continua sendo um texto de busca: LIKE trata
+    // `%`, `_` e `\\` como sintaxe, não como caracteres literais.
+    const literal = pub.replace(/[\\%_]/g, '\\$&');
+    return like(books.publisher, `%${literal}%`);
 };
 
 // Default do catálogo é "possuídos" — livros desejados/não-possuídos não
@@ -606,7 +609,8 @@ export async function fetchReadingStats(userId: string): Promise<ReadingStats> {
                 n: sql<number>`count(*)`,
             })
             .from(books)
-            .where(sql`${books.date_finished} is not null`)
+            .where(sql`${books.read_status} = 'lido'
+                and ${books.date_finished} is not null`)
             .groupBy(sql`extract(year from ${books.date_finished})`);
 
         return {

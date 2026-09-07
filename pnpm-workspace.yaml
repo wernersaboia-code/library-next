@@ -1,0 +1,5 @@
+overrides:
+  postcss: 8.5.28
+  ws: 8.21.0
+  esbuild: 0.25.0
+  yaml: 2.8.3

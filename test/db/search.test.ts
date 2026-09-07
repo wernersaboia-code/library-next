@@ -49,6 +49,8 @@ beforeAll(async () => {
   await livro({ title: 'Duna', original_title: 'Dune' });
   await livro({ title: 'Volume perdido', series: 'Crônicas de Gelo' });
   await livro({ title: 'Sem nome', publisher: 'Companhia das Letras' });
+  await livro({ title: 'Editora percentual', publisher: 'Cem% Editora' });
+  await livro({ title: 'Editora sublinhado', publisher: 'AB Editora' });
   await livro({ title: "O'Brien e o mistério" });
   await livro({ title: '100% garantido' });
 
@@ -135,11 +137,18 @@ describe('robustez da entrada', () => {
   it('trata % como texto, não como curinga do LIKE', async () => {
     // Sem escapar, "%" casaria com o acervo inteiro.
     expect(await titulos('100%')).toEqual(['100% garantido']);
-    expect(await titulos('%')).toEqual(['100% garantido']);
+    expect(await titulos('%')).toEqual(['100% garantido', 'Editora percentual']);
   });
 
   it('trata _ como texto, não como curinga de um caractere', async () => {
     expect(await busca('_')).toEqual([]);
+  });
+
+  it('escapa curingas no filtro de editora', async () => {
+    const { fetchBooksWithPagination } = await import('@/lib/db/queries');
+    expect((await fetchBooksWithPagination(userId, { pub: '%' }))
+      .map((b) => b.title)).toEqual(['Editora percentual']);
+    expect((await fetchBooksWithPagination(userId, { pub: '_' }))).toEqual([]);
   });
 
   it('busca vazia não filtra nada', async () => {

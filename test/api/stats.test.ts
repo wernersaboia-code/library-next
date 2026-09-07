@@ -28,6 +28,13 @@ beforeAll(async () => {
       (${userId}, 'Livro D', 'Livro D', 'não lido', null, 50)
   `;
 
+  await ctx.sql`
+    insert into books
+      (user_id, title, title_source, read_status, date_finished, num_pages)
+    values
+      (${userId}, 'Livro reclassificado', 'Livro reclassificado', 'abandonado', '2024-06-01', 80)
+  `;
+
   vi.doMock('@/lib/db/drizzle', () => ({ db: ctx.db, client: ctx.sql }));
   vi.doMock('@/lib/auth-user', () => ({
     getCurrentUserId: async () => userId,
@@ -45,7 +52,7 @@ describe('GET /api/reading/stats', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    expect(body.totalBooks).toBe(4);
+    expect(body.totalBooks).toBe(5);
     expect(body.lidos).toBe(3);
     expect(body.naoLidos).toBe(1);
     expect(body.paginasLidas).toBe(450); // 100 + 150 + 200 (só os lidos)
