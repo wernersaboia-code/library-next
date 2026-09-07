@@ -181,7 +181,10 @@ export function BooksGrid({
                 src={book.image_url}
                 title={book.title}
                 thumbhash={book.thumbhash}
-                priority={index < 10}
+                // Só as primeiras capas estão normalmente no viewport inicial;
+                // o restante deve usar lazy loading para não congestionar a
+                // navegação com dezenas de requests de imagem.
+                priority={index < 4}
                 readStatus={book.read_status}
                 myRating={book.my_rating}
                 owned={book.owned}
@@ -202,7 +205,7 @@ export function BooksGrid({
                   type="button"
                   onClick={() => alternar(book.id)}
                   aria-pressed={marcado}
-                  className={`relative block rounded-md text-left ${
+                  className={`content-auto relative block rounded-md text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     marcado ? 'ring-2 ring-offset-2 ring-primary' : ''
                   }`}
                 >
@@ -226,7 +229,7 @@ export function BooksGrid({
               <Link
                 href={`/${book.id}?${stringifySearchParams(searchParams)}`}
                 key={book.id}
-                className="block transition ease-in-out md:hover:scale-105"
+                className="content-auto block rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hover:scale-105"
                 // Sempre pré-carrega (default): a página do livro é dinâmica,
                 // e o payload pré-carregado cobre a transição com o loading
                 // em vez de esperar o round-trip começar do zero no clique.

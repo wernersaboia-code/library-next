@@ -9,23 +9,35 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [entrando, setEntrando] = useState(false);
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
+    if (entrando) return;
     setErro('');
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email, password: senha,
-    });
-    if (error) { setErro('E-mail ou senha inválidos.'); return; }
-    // garante a linha app_users antes de qualquer query com FK
-    const res = await fetch('/api/auth/ensure', { method: 'POST' });
-    if (!res.ok) {
-      setErro('Não foi possível inicializar sua conta. Tente novamente.');
-      return;
+    setEntrando(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email, password: senha,
+      });
+      if (error) {
+        setErro('E-mail ou senha inválidos.');
+        return;
+      }
+      // garante a linha app_users antes de qualquer query com FK
+      const res = await fetch('/api/auth/ensure', { method: 'POST' });
+      if (!res.ok) {
+        setErro('Não foi possível inicializar sua conta. Tente novamente.');
+        return;
+      }
+      router.replace('/');
+      router.refresh();
+    } catch {
+      setErro('Não foi possível conectar. Tente novamente.');
+    } finally {
+      setEntrando(false);
     }
-    router.replace('/');
-    router.refresh();
   }
 
   return (
@@ -46,27 +58,34 @@ export default function LoginPage() {
           </p>
         </div>
         <input
+          id="email"
           type="email"
           required
+          autoComplete="email"
+          aria-label="E-mail"
           placeholder="E-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <input
+          id="password"
           type="password"
           required
+          autoComplete="current-password"
+          aria-label="Senha"
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
         <button
           type="submit"
-          className="w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          disabled={entrando}
+          className="w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Entrar
+          {entrando ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
     </div>

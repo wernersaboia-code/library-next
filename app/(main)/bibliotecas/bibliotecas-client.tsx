@@ -129,7 +129,7 @@ export function BibliotecasClient({ initial }: { initial: Biblioteca[] }) {
             Criar
           </Button>
         </div>
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
       </div>
 
       {initial.length === 0 ? (

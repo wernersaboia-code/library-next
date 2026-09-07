@@ -206,7 +206,7 @@ export function ProgressControls({
         </div>
       )}
 
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
     </div>
   );
 }

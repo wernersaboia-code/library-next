@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const run = vi.fn();
 const aplicar = vi.fn(async () => 'https://cdn/nova.jpg');
 const baixar = vi.fn(async () => Buffer.from('imagem'));
+const limitar = vi.fn(() => ({ allowed: true, retryAfter: 0 }));
 
 vi.mock('@/lib/auth-user', () => ({
   getCurrentUserId: vi.fn(async () => 'u-1'),
@@ -15,6 +16,7 @@ vi.mock('@/lib/covers', async () => {
   const real = await vi.importActual<typeof import('@/lib/covers')>('@/lib/covers');
   return { ...real, applyCoverFromBuffer: aplicar, fetchOpenLibraryCover: baixar };
 });
+vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: limitar }));
 
 async function POST(id: string, body: unknown) {
   const mod = await import('@/app/api/books/[id]/cover/route');
@@ -31,6 +33,7 @@ async function POST(id: string, body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   run.mockResolvedValue('manual');   // o handler consulta o source
+  limitar.mockReturnValue({ allowed: true, retryAfter: 0 });
 });
 
 describe('POST /api/books/[id]/cover', () => {
@@ -59,6 +62,15 @@ describe('POST /api/books/[id]/cover', () => {
 
   it('recusa coverId não numérico com 400', async () => {
     expect((await POST('1', { coverId: 'abc' })).status).toBe(400);
+  });
+
+  it('recusa rajada de trocas de capa com 429', async () => {
+    limitar.mockReturnValue({ allowed: false, retryAfter: 17 });
+    const res = await POST('1', { coverId: 12345 });
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('17');
+    expect(baixar).not.toHaveBeenCalled();
   });
 
   it('AD-7: recusa URL no lugar do coverId — nunca baixa endereço do cliente', async () => {

@@ -51,17 +51,10 @@ usada pelo `drizzle-kit`. **Atenção:** os scripts `pnpm db:migrate` e
 `POSTGRES_URL` — depois do corte, eles rodariam como `book_app`, que não
 tem privilégio de esquema para criar/alterar tabelas.
 
-Duas opções:
-
-- **Recomendada (mínima):** troque a `POSTGRES_URL` **só nos ambientes da
-  Vercel**. O `.env` local (que roda `db:migrate` e `db:import-calibre`)
-  continua com a URL de owner até que os scripts passem a usar
-  `POSTGRES_MIGRATION_URL` — mudança de código, fora deste guia.
-- **Completa:** ajuste `lib/db/migrate.ts` e `lib/db/import-calibre.ts`
-  para abrirem a própria conexão com `POSTGRES_MIGRATION_URL`. Aí a
-  `POSTGRES_URL` de owner some de vez. (A importação via `book_app`
-  também funcionaria — o `withUser` seta `app.user_id` e as políticas
-  passam — mas migrations exigem dono.)
+O script `db:migrate` usa `POSTGRES_MIGRATION_URL` diretamente. Portanto,
+troque a `POSTGRES_URL` nos ambientes da Vercel sem afetar migrations locais.
+O importador também usa a conexão da aplicação e continua protegido pelo
+escopo de usuário de `withUser`.
 
 ### 4. Conferir
 

@@ -75,4 +75,11 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Cards fora da área visível não precisam ser pintados antes da rolagem.
+     O tamanho intrínseco evita saltos no layout enquanto entram na tela. */
+  .content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 300px;
+  }
 }

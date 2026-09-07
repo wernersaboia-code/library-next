@@ -9,6 +9,7 @@ import {
   applyCoverFromBuffer, fetchOpenLibraryCover,
   MAX_COVER_BYTES, TIPOS_ACEITOS,
 } from '@/lib/covers';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(
   req: Request, { params }: { params: Promise<{ id: string }> }
@@ -34,6 +35,14 @@ export async function POST(
       return NextResponse.json({
         error: 'Este livro veio do Calibre. Troque a capa no Calibre e sincronize.',
       }, { status: 409 });
+    }
+
+    const rate = checkRateLimit(`cover-upload:${userId}`, 10, 60_000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas trocas de capa em pouco tempo. Tente novamente em instantes.' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
+      );
     }
 
     const contentType = req.headers.get('content-type') ?? '';

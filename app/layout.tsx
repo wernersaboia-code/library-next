@@ -16,15 +16,9 @@ export const metadata: Metadata = {
   description: 'Seu catálogo pessoal de livros.',
 };
 
-// Trava o zoom por pinça/toque duplo: sem isso, um zoom acidental desalinha
-// até os elementos fixos (a barra do rodapé), que passam a exigir arrastar
-// a página inteira de volta para o lugar — o app é de uso pessoal, então
-// esse é o comportamento de app nativo que se quer, não o de uma página web.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({

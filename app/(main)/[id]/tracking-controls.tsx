@@ -215,7 +215,7 @@ export function TrackingControls({ bookId, initial }: TrackingControlsProps) {
       </div>
 
       {isSaving && <p className="text-sm text-muted-foreground">Salvando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }

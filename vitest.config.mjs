@@ -1,10 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
-export default defineConfig({
-  plugins: [tsconfigPaths()],
+const vitestConfig = defineConfig({
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // O Next.js substitui `server-only` por um módulo que lança erro
       // fora de Server Components; o Vitest não tem esse bundler, então
@@ -30,3 +29,5 @@ export default defineConfig({
     fileParallelism: false,
   },
 });
+
+export default vitestConfig;
