@@ -19,6 +19,7 @@ import { NotesSection } from './notes-section';
 import { BookCollections } from './book-collections';
 import { ProgressControls } from './progress-controls';
 import { OriginalTitleEditor } from './original-title';
+import { ReadingAction } from './reading-action';
 import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
 import { fetchNotes } from '@/lib/db/notes';
@@ -134,6 +135,15 @@ export default async function Page(
               }}
             />
           )}
+
+          <ReadingAction
+            bookId={book.id}
+            initial={{
+              readyToRead: book.ready_to_read,
+              hasFile: book.has_file,
+              canPrepare: book.source === 'calibre' && book.owned,
+            }}
+          />
 
           <TrackingControls
             bookId={book.id}

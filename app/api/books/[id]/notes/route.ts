@@ -5,7 +5,7 @@ import { withUser } from '@/lib/db/with-user';
 import { highlights } from '@/lib/db/schema';
 import { errorResponse } from '@/lib/errors';
 
-const KIND = new Set(['note', 'quote']);
+const KIND = new Set(['note', 'quote', 'highlight']);
 
 function parseBookId(id: string): number | null {
   const bookId = Number(id);
@@ -60,6 +60,10 @@ export async function POST(
         { status: 400 }
       );
 
+    const locator = body.locator && typeof body.locator === 'object'
+      ? body.locator
+      : null;
+
     const rows = await withUser(userId, (tx) =>
       tx.insert(highlights).values({
         userId,
@@ -67,6 +71,7 @@ export async function POST(
         kind: body.kind,
         textContent,
         note,
+        locator,
       }).returning({ id: highlights.id }));
 
     return NextResponse.json(rows[0]);

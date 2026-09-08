@@ -88,7 +88,7 @@ export async function PATCH(
     }
 
     if (Object.keys(set).length === 0 && body.nextUp === undefined
-        && body.favorite === undefined)
+        && body.favorite === undefined && body.readyToRead === undefined)
       return NextResponse.json({ error: 'nada para atualizar' }, { status: 400 });
 
     // ─── Regras que dependem do estado atual ──────────────────
@@ -101,6 +101,7 @@ export async function PATCH(
         .select({
           read_status: books.read_status,
           owned: books.owned,
+          source: books.source,
         })
         .from(books)
         .where(eq(books.id, bookId))
@@ -140,6 +141,19 @@ export async function PATCH(
           };
         }
         set.favorite = body.favorite === true;
+      }
+
+      // "Preparar para leitura" só faz sentido para livro do acervo (Calibre
+      // possuído): o comando local lê o arquivo da biblioteca no PC.
+      if (body.readyToRead !== undefined) {
+        if (body.readyToRead === true && (atual.source !== 'calibre' || !atual.owned)) {
+          return {
+            kind: 'conflito',
+            mensagem: 'Só dá para preparar para leitura um livro do acervo '
+              + 'que você possui.',
+          };
+        }
+        set.ready_to_read = body.readyToRead === true;
       }
 
       // Virou lido: saiu da fila (AD-6). Não mexemos se o próprio pedido

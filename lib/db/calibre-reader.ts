@@ -69,6 +69,39 @@ export function readCoverBuffer(
     return fs.readFileSync(coverPath);
 }
 
+/** Formato e caminho do arquivo de leitura (EPUB/PDF) na pasta do livro. */
+export interface CalibreBookFile {
+    format: 'epub' | 'pdf';
+    filePath: string;
+    size: number;
+}
+
+/**
+ * Localiza o arquivo de leitura do livro na pasta do Calibre. Preferimos
+ * EPUB; se não houver, o PDF. Devolve `null` quando o livro não tem formato
+ * legível na pasta.
+ */
+export function readCalibreBookFile(
+    calibrePath: string,
+    bookPath: string
+): CalibreBookFile | null {
+    const dir = path.join(calibrePath, bookPath);
+    if (!fs.existsSync(dir)) return null;
+
+    const entries = fs.readdirSync(dir);
+    const epub = entries.find((f) => /\.epub$/i.test(f));
+    const pdf = epub ? undefined : entries.find((f) => /\.pdf$/i.test(f));
+    const fileName = epub ?? pdf;
+    if (!fileName) return null;
+
+    const filePath = path.join(dir, fileName);
+    return {
+        format: epub ? 'epub' : 'pdf',
+        filePath,
+        size: fs.statSync(filePath).size,
+    };
+}
+
 /**
  * Lê o `metadata.db` do Calibre e devolve os livros já normalizados.
  * Faz I/O de arquivo; não toca no banco.

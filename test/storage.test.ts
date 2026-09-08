@@ -4,7 +4,11 @@ const upload = vi.fn();
 const getPublicUrl = vi.fn(() => ({
   data: { publicUrl: 'https://cdn/x.jpg' },
 }));
-const from = vi.fn(() => ({ upload, getPublicUrl }));
+const createSignedUrl = vi.fn(() => ({
+  data: { signedUrl: 'https://cdn/book.signed' },
+  error: null,
+}));
+const from = vi.fn(() => ({ upload, getPublicUrl, createSignedUrl }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
@@ -61,5 +65,24 @@ describe('storage', () => {
       uploadCover('u1', 42, Buffer.from('x'), 'gif')
     ).rejects.toThrow(/gif/);
     expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('sobe o arquivo do livro no bucket privado', async () => {
+    upload.mockResolvedValue({ data: { path: 'p' }, error: null });
+    const { uploadBookFile, BOOK_FILES_BUCKET } = await import('@/lib/storage');
+    const path = await uploadBookFile('u1', 42, Buffer.from('x'), 'epub');
+    expect(upload).toHaveBeenCalledWith(
+      'u1/42/book.epub', expect.any(Buffer),
+      expect.objectContaining({ contentType: 'application/epub+zip', upsert: true })
+    );
+    expect(path).toBe('u1/42/book.epub');
+    expect(BOOK_FILES_BUCKET).toBe('book-files');
+  });
+
+  it('gera signed URL para o arquivo privado', async () => {
+    const { getSignedBookUrl } = await import('@/lib/storage');
+    const url = await getSignedBookUrl('u1/42/book.epub');
+    expect(createSignedUrl).toHaveBeenCalledWith('u1/42/book.epub', 3600);
+    expect(url).toBe('https://cdn/book.signed');
   });
 });

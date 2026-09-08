@@ -27,6 +27,7 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 - Faixa "Lendo agora" no topo do acervo
 - Notas e citações por livro
 - Painel com totais, páginas lidas e contagem por mês e por ano
+- Leitura em página (EPUB/PDF), com tradução de trechos e destaques
 
 **Estantes**
 
@@ -81,6 +82,7 @@ defina `CALIBRE_PATH` no `.env`.
 | `pnpm lint` | ESLint |
 | `pnpm db:migrate` | Aplica migrations — **estrutura** do banco |
 | `pnpm db:import-calibre` | Importa **livros** do Calibre |
+| `pnpm db:sync-files` | Sobe os **arquivos** (EPUB/PDF) dos livros marcados no app |
 | `pnpm db:generate` | Gera migration a partir do schema |
 | `pnpm db:studio` | Drizzle Studio |
 

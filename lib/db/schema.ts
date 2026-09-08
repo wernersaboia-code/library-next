@@ -1,7 +1,7 @@
 // lib/db/schema.ts
 import {
   pgTable, serial, text, integer, timestamp, decimal, date,
-  primaryKey, index, uuid, customType, boolean, real,
+  primaryKey, index, uuid, customType, boolean, real, bigint, jsonb,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -91,6 +91,12 @@ export const books = pgTable(
     next_up: boolean('next_up').notNull().default(false),
     favorite: boolean('favorite').notNull().default(false),
 
+    // Leitura em página: `ready_to_read` é a intenção marcada no app (o
+    // comando local sobe o arquivo); `has_file` indica que o arquivo já está
+    // no Storage e o botão "Ler" pode ser habilitado.
+    ready_to_read: boolean('ready_to_read').notNull().default(false),
+    has_file: boolean('has_file').notNull().default(false),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
   },
@@ -162,6 +168,9 @@ export const highlights = pgTable(
     kind: text('kind').notNull(),
 
     textContent: text('text_content'),
+    // Localização do trecho no leitor: EPUB guarda CFI; PDF guarda página e
+    // seleção. JSONB permite formatos novos sem migration.
+    locator: jsonb('locator'),
 
     color: text('color').default('#ffff00').notNull(),
     note: text('note'),
@@ -182,6 +191,33 @@ export const highlights = pgTable(
   })
 );
 
+// Arquivo do livro (EPUB/PDF) no Supabase Storage. Uma linha por livro:
+// guardamos um formato de leitura por vez (preferindo EPUB). O livro é
+// carregado sob demanda — `ready_to_read` marca a intenção no app, e o
+// comando local `db:sync-files` sobe o arquivo do Calibre.
+export const bookFiles = pgTable(
+  'book_files',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id').notNull()
+      .references(() => appUsers.id, { onDelete: 'cascade' }),
+    bookId: integer('book_id').notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    format: text('format').notNull(),
+    storagePath: text('storage_path').notNull(),
+    mime: text('mime').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(),
+    sha256: text('sha256'),
+    hasFile: boolean('has_file').notNull().default(false),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow().notNull(),
+  },
+  (t) => ({
+    bookIdx: index('idx_book_files_book').on(t.bookId),
+    userIdx: index('idx_book_files_user').on(t.userId),
+  })
+);
+
 export type SelectBook = typeof books.$inferSelect;
 export type Book = Pick<
   SelectBook,
@@ -192,6 +228,7 @@ export type SelectAuthor = typeof authors.$inferSelect;
 export type Author = Pick<SelectAuthor, 'id' | 'name'>;
 export type SelectHighlight = typeof highlights.$inferSelect;
 export type SelectCollection = typeof collections.$inferSelect;
+export type SelectBookFile = typeof bookFiles.$inferSelect;
 
 export const booksRelations = relations(books, ({ many }) => ({
   bookToAuthor: many(bookToAuthor),
