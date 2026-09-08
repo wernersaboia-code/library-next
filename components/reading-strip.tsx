@@ -9,11 +9,14 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
   if (livros.length === 0) return null;
 
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 font-display text-base font-semibold text-foreground">
-        Lendo agora
-      </h2>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+    <section className="mb-7 rounded-2xl bg-card/70 p-4 ring-1 ring-border/70">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-lg font-semibold text-foreground">
+          Lendo agora
+        </h2>
+        <span className="text-xs text-muted-foreground">Acompanhe seu ritmo</span>
+      </div>
+      <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1">
         {livros.map((livro) => {
           const dias = diasParado(livro.progress_updated_at);
           const parado = dias !== null && dias >= DIAS_PARA_PARADO;
@@ -23,7 +26,7 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
             <Link
               key={livro.id}
               href={`/${livro.id}`}
-              className="w-24 shrink-0 transition ease-in-out md:hover:scale-105"
+              className="w-24 shrink-0 snap-start rounded-xl transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hover:scale-105"
             >
               <Photo
                 src={livro.image_url}

@@ -50,7 +50,7 @@ export default function Dashboard({ stats }: { stats: ReadingStats }) {
 
   return (
     <div className="mb-6">
-      <div className="flex gap-4 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 lg:grid-cols-5">
+      <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-5">
         {cards.map((card) => (
           <div
             key={card.label}

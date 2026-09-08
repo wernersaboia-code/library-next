@@ -30,7 +30,7 @@ export default function MobileTabBar() {
     // ficam colados na borda da tela (inset-x-0). Sem isso, um leve arrasto
     // lateral ao tocar ali é lido pelo Chrome/WebKit no iOS como o gesto de
     // voltar/trocar de app, em vez de um toque no botão.
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-stretch border-t bg-card touch-pan-y md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex min-h-14 items-stretch border-t border-border/80 bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_18px_hsl(var(--foreground)/0.05)] backdrop-blur-md touch-pan-y md:hidden">
       {itens.map((item) => {
         const ativo = item.ativo(pathname);
         // Fallback defensivo: o tsconfig não liga noUncheckedIndexedAccess,
@@ -43,12 +43,14 @@ export default function MobileTabBar() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5',
+              'flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors',
               ativo ? 'text-primary' : 'text-muted-foreground'
             )}
           >
             <Icone className="h-5 w-5" aria-hidden />
-            <span className="text-[11px] font-medium">{item.label}</span>
+            <span className="text-[11px] font-medium">
+              {item.href === '/' ? 'Biblioteca' : item.label}
+            </span>
           </Link>
         );
       })}

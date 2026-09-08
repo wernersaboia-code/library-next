@@ -2,9 +2,9 @@ import { BookmarkIcon, HeartIcon } from 'lucide-react';
 import { Estrelas } from './estrelas';
 
 const STATUS_LABEL: Record<string, { texto: string; classe: string }> = {
-  lido: { texto: 'Lido', classe: 'bg-emerald-600' },
-  lendo: { texto: 'Lendo', classe: 'bg-amber-500' },
-  abandonado: { texto: 'Abandonado', classe: 'bg-gray-600' },
+  lido: { texto: 'Lido', classe: 'bg-emerald-600/90' },
+  lendo: { texto: 'Lendo', classe: 'bg-amber-500/90' },
+  abandonado: { texto: 'Abandonado', classe: 'bg-gray-600/90' },
 };
 
 export function CoverBadges({
@@ -32,27 +32,27 @@ export function CoverBadges({
           Canto direito: as três marcas quase nunca coexistem — "Quero ter" é
           livro que não se tem, a marca de próximo some quando o livro vira
           lido, e favorito exige lido. Empilham em linha se coincidirem. */}
-      <div className="absolute right-1 top-1 flex items-center gap-1">
+      <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
         {!owned && (
-          <span className="rounded bg-stone-700 px-1.5 py-0.5 text-[10px] font-medium text-white shadow">
+          <span className="rounded-full bg-stone-800/85 px-2 py-1 text-[10px] font-semibold text-white shadow-sm backdrop-blur-sm">
             Quero ter
           </span>
         )}
         {nextUp && (
           <span
             title="Na fila de leitura"
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/95 shadow-sm ring-1 ring-white/40 backdrop-blur-sm"
           >
-            <BookmarkIcon aria-hidden className="h-3 w-3 fill-primary-foreground text-primary-foreground" />
+            <BookmarkIcon aria-hidden className="h-3.5 w-3.5 fill-primary-foreground text-primary-foreground" />
             <span className="sr-only">Na fila de leitura</span>
           </span>
         )}
         {favorite && (
           <span
             title="Favorito"
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 shadow"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-600/95 shadow-sm ring-1 ring-white/40 backdrop-blur-sm"
           >
-            <HeartIcon aria-hidden className="h-3 w-3 fill-white text-white" />
+            <HeartIcon aria-hidden className="h-3.5 w-3.5 fill-white text-white" />
             <span className="sr-only">Favorito</span>
           </span>
         )}
@@ -60,14 +60,14 @@ export function CoverBadges({
 
       {status && (
         <span
-          className={`absolute left-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white shadow ${status.classe}`}
+          className={`absolute left-1.5 top-1.5 rounded-full px-2 py-1 text-[10px] font-semibold text-white shadow-sm backdrop-blur-sm ${status.classe}`}
         >
           {status.texto}
         </span>
       )}
 
       {nota !== null && (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center bg-black/60 py-1">
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2 pb-1.5 pt-4">
           <Estrelas nota={nota} tamanho="sm" />
         </div>
       )}

@@ -85,21 +85,22 @@ export function MobileMoreMenu() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setAberto(false)}
           />
-          <div className="absolute inset-y-0 right-0 flex w-80 max-w-[85vw] flex-col bg-card text-card-foreground shadow-xl ring-1 ring-border">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <h2 className="font-display text-lg font-semibold tracking-tight">
+          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-3xl bg-card/95 pb-[env(safe-area-inset-bottom)] text-card-foreground shadow-2xl ring-1 ring-border backdrop-blur-md">
+            <span className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted" aria-hidden />
+            <div className="flex items-center justify-between px-5 pt-3">
+              <h2 className="font-display text-xl font-semibold tracking-tight">
                 Mais
               </h2>
               <button
                 type="button"
                 onClick={() => setAberto(false)}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 aria-label="Fechar"
               >
                 <XIcon className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <div className="flex flex-col gap-1 p-3">
+            <div className="flex flex-col gap-1 p-4">
               {ITENS_MAIS.map((item) => {
                 const Icone = ICONES_MAIS[item.href] ?? BookOpenIcon;
                 return (
@@ -107,21 +108,21 @@ export function MobileMoreMenu() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setAberto(false)}
-                    className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                    className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-foreground hover:bg-accent"
                   >
                     <Icone className="h-4 w-4" aria-hidden />
                     {item.label}
                   </Link>
                 );
               })}
-              <div className="flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-foreground">
+              <div className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium text-foreground">
                 Tema
                 <ThemeToggle />
               </div>
               <button
                 type="button"
                 onClick={sair}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOutIcon className="h-4 w-4" aria-hidden />
                 Sair
