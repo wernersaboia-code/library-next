@@ -12,7 +12,10 @@ export class StorageQuotaError extends Error {
 }
 
 function client() {
-  const url = process.env.SUPABASE_URL;
+  // A URL do projeto é pública: cai para a variável NEXT_PUBLIC_ quando a
+  // server-only SUPABASE_URL não está definida (evita duplicar configuração
+  // na Vercel). A chave de service role continua sendo o segredo.
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('SUPABASE_URL/SERVICE_ROLE_KEY ausentes');
   return createClient(url, key, { auth: { persistSession: false } });
