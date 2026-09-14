@@ -88,7 +88,17 @@ export function ReaderClient({
           setError(data?.error ?? 'Não foi possível abrir o arquivo.');
           return;
         }
-        setInfo({ url: data.url, format: data.format, mime: data.mime });
+        if (data.format === 'epub') {
+          // O epubjs, ao receber uma URL com `?token=...` (signed URL),
+          // interpreta como EPUB "em diretório" e vai buscar
+          // META-INF/container.xml no Storage (404 → erro de parse XML).
+          // Baixamos o arquivo e entregamos o ArrayBuffer, como no offline.
+          const buf = await (await fetch(data.url)).arrayBuffer();
+          if (!ativo) return;
+          setInfo({ format: 'epub', data: buf });
+        } else {
+          setInfo({ url: data.url, format: data.format, mime: data.mime });
+        }
       } catch {
         if (ativo) setError('Falha de rede ao abrir o arquivo.');
       }
