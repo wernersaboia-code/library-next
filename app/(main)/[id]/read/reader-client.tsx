@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import type { DocumentProps, PageProps } from 'react-pdf';
 import Link from 'next/link';
-import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon } from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import type { Bookmark } from '@/lib/db/bookmarks';
 import { lerLivro, salvarLivro, pedirPersistencia } from '@/lib/offline/books';
 import { useOffline } from '@/components/offline-provider';
@@ -542,7 +542,7 @@ function EpubView({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const renditionRef = useRef<{ display: (target?: string) => unknown } | null>(null);
+  const renditionRef = useRef<import('epubjs').Rendition | null>(null);
   const onPositionRef = useRef(onPosition);
   onPositionRef.current = onPosition;
   const initialCfiRef = useRef(initialCfi);
@@ -552,6 +552,7 @@ function EpubView({
     if (!container.current) return;
     let livro: import('epubjs').Book | null = null;
     let aberto = true;
+    let observador: ResizeObserver | null = null;
 
     (async () => {
       try {
@@ -567,6 +568,19 @@ function EpubView({
         });
         renditionRef.current = rendition;
         await rendition.display(initialCfiRef.current ?? undefined);
+
+        // O epubjs precisa das dimensões resolvidas para paginar. O container
+        // é flex e pode ganhar tamanho depois do primeiro paint; re-resiza no
+        // próximo frame e a cada mudança de tamanho.
+        requestAnimationFrame(() => {
+          const el = container.current;
+          if (el) rendition.resize(el.clientWidth, el.clientHeight);
+        });
+        observador = new ResizeObserver(() => {
+          const el = container.current;
+          if (el) rendition.resize(el.clientWidth, el.clientHeight);
+        });
+        observador.observe(container.current);
 
         try {
           await livro.locations.generate(1000);
@@ -598,6 +612,7 @@ function EpubView({
 
     return () => {
       aberto = false;
+      observador?.disconnect();
       renditionRef.current = null;
       livro?.destroy();
     };
@@ -609,9 +624,38 @@ function EpubView({
     }
   }, [jumpTo]);
 
+  // Navegação por teclado (setas) além dos botões — o gesto de swipe do
+  // epubjs nem sempre pega em desktop.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight') void renditionRef.current?.next();
+      else if (e.key === 'ArrowLeft') void renditionRef.current?.prev();
+    }
+    window.addEventListener('keyup', onKey);
+    return () => window.removeEventListener('keyup', onKey);
+  }, []);
+
   return (
     <div className="relative flex-1 overflow-hidden">
       <div ref={container} className="h-full w-full" />
+
+      <button
+        type="button"
+        aria-label="Página anterior"
+        onClick={() => void renditionRef.current?.prev()}
+        className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
+      >
+        <ChevronLeftIcon className="h-5 w-5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        aria-label="Próxima página"
+        onClick={() => void renditionRef.current?.next()}
+        className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
+      >
+        <ChevronRightIcon className="h-5 w-5" aria-hidden />
+      </button>
+
       {erro && (
         <div className="absolute inset-0 flex items-center justify-center">
           <p role="alert" className="text-sm text-red-600">{erro}</p>
