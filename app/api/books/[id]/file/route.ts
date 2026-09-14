@@ -38,13 +38,22 @@ export async function GET(
       const url = await getSignedBookUrl(file.storagePath);
       return NextResponse.json({ url, format: file.format, mime: file.mime });
     } catch (e) {
-      // Linha no banco sem objeto no Storage (ex.: bucket recriado): trata
-      // como "não carregado" em vez de 500, orientando a rodar o sync.
       const msg = e instanceof Error ? e.message : '';
       if (/not found|does not exist|no such object/i.test(msg)) {
+        // Linha no banco sem objeto no Storage (ex.: bucket recriado): trata
+        // como "não carregado" em vez de 500, orientando a rodar o sync.
         return NextResponse.json(
           { error: 'Arquivo não encontrado no Storage. Rode `pnpm db:sync-files`.' },
           { status: 404 }
+        );
+      }
+      if (/ausentes|SUPABASE_URL|SERVICE_ROLE_KEY|invalid api key|invalid compact jws/i.test(msg)) {
+        // Erro de configuração do servidor: mensagem própria para o log e a
+        // tela apontarem a causa, sem expor a mensagem crua do SDK.
+        console.error('[file] Storage mal configurado:', msg);
+        return NextResponse.json(
+          { error: 'Storage não configurado no servidor (SUPABASE_URL/SERVICE_ROLE_KEY).' },
+          { status: 500 }
         );
       }
       throw e;
