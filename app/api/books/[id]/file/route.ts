@@ -34,8 +34,21 @@ export async function GET(
       return NextResponse.json({ error: 'Arquivo ainda não carregado' }, { status: 404 });
     }
 
-    const url = await getSignedBookUrl(file.storagePath);
-    return NextResponse.json({ url, format: file.format, mime: file.mime });
+    try {
+      const url = await getSignedBookUrl(file.storagePath);
+      return NextResponse.json({ url, format: file.format, mime: file.mime });
+    } catch (e) {
+      // Linha no banco sem objeto no Storage (ex.: bucket recriado): trata
+      // como "não carregado" em vez de 500, orientando a rodar o sync.
+      const msg = e instanceof Error ? e.message : '';
+      if (/not found|does not exist|no such object/i.test(msg)) {
+        return NextResponse.json(
+          { error: 'Arquivo não encontrado no Storage. Rode `pnpm db:sync-files`.' },
+          { status: 404 }
+        );
+      }
+      throw e;
+    }
   } catch (err) {
     return errorResponse(err, 'Erro ao abrir o arquivo');
   }

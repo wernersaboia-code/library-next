@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Fraunces } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { SerwistProvider } from '@serwist/turbopack/react';
 import { cn } from '@/lib/utils';
 
 const FrauncesFont = Fraunces({
@@ -14,11 +15,18 @@ const FrauncesFont = Fraunces({
 export const metadata: Metadata = {
   title: 'Book Inventory',
   description: 'Seu catálogo pessoal de livros.',
+  applicationName: 'Book Inventory',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Book Inventory',
+  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#111827',
 };
 
 export default function RootLayout({
@@ -44,7 +52,7 @@ export default function RootLayout({
           }}
         />
         <Toaster closeButton />
-        {children}
+        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
       </body>
     </html>
   );

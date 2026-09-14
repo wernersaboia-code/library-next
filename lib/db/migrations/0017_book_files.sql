@@ -4,8 +4,8 @@
 -- `books.ready_to_read`: marcado no app ("Preparar para leitura").
 -- `books.has_file`: o comando local `db:sync-files` já subiu o arquivo.
 -- `book_files`: metadados do arquivo no bucket privado `book-files`.
-ALTER TABLE "books" ADD COLUMN "ready_to_read" boolean NOT NULL DEFAULT false;--> statement-breakpoint
-ALTER TABLE "books" ADD COLUMN "has_file" boolean NOT NULL DEFAULT false;--> statement-breakpoint
+ALTER TABLE "books" ADD COLUMN IF NOT EXISTS "ready_to_read" boolean NOT NULL DEFAULT false;--> statement-breakpoint
+ALTER TABLE "books" ADD COLUMN IF NOT EXISTS "has_file" boolean NOT NULL DEFAULT false;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS "book_files" (
   "id" serial PRIMARY KEY,
@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS "book_files" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );--> statement-breakpoint
 
+ALTER TABLE "book_files" DROP CONSTRAINT IF EXISTS "book_files_format_check";--> statement-breakpoint
 ALTER TABLE "book_files" ADD CONSTRAINT "book_files_format_check"
   CHECK ("format" IN ('epub', 'pdf'));--> statement-breakpoint
 

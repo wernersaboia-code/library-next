@@ -16,6 +16,7 @@ export default tseslint.config(
       '.next/**',
       'node_modules/**',
       'lib/db/migrations/**',
+      'public/**',
       'next-env.d.ts',
     ],
   },

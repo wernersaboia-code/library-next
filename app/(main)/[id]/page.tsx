@@ -16,6 +16,7 @@ import { getCurrentUserId } from '@/lib/auth-user';
 import { notFound } from 'next/navigation';
 import { TrackingControls } from './tracking-controls';
 import { NotesSection } from './notes-section';
+import { BookmarksSection } from './bookmarks-section';
 import { BookCollections } from './book-collections';
 import { ProgressControls } from './progress-controls';
 import { OriginalTitleEditor } from './original-title';
@@ -23,6 +24,7 @@ import { ReadingAction } from './reading-action';
 import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
 import { fetchNotes } from '@/lib/db/notes';
+import { fetchBookmarks } from '@/lib/db/bookmarks';
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -53,11 +55,14 @@ export default async function Page(
   const bookId = Number(params.id);
   // As notas entram no mesmo fetch da página (AD do painel): renderizá-las
   // aqui evita o round-trip no cliente + o flash "Carregando notas...".
-  const [book, bibliotecas, notas] = await Promise.all([
+  const [book, bibliotecas, notas, marcadores] = await Promise.all([
     fetchBookById(userId, params.id),
     fetchCollections(userId),
     Number.isInteger(bookId) && bookId > 0
       ? fetchNotes(userId, bookId)
+      : Promise.resolve([]),
+    Number.isInteger(bookId) && bookId > 0
+      ? fetchBookmarks(userId, bookId)
       : Promise.resolve([]),
   ]);
   if (!book) notFound();
@@ -76,6 +81,7 @@ export default async function Page(
       <div className="flex flex-col gap-6 md:flex-row md:gap-8">
         <div className="mx-auto w-2/3 max-w-xs md:mx-0 md:w-1/4 md:shrink-0">
           <Photo
+            bookId={book.id}
             src={book.image_url}
             title={book.title}
             thumbhash={book.thumbhash}
@@ -190,6 +196,8 @@ export default async function Page(
           </div>
 
           <NotesSection bookId={book.id} initial={notas} />
+
+          <BookmarksSection bookId={book.id} initial={marcadores} />
         </div>
       </div>
       </div>

@@ -69,6 +69,14 @@ export async function PATCH(
         : null;
     }
 
+    // Posição de leitura para retomar (o leitor manda junto do progresso).
+    // jsonb opaco para o servidor: o leitor é quem interpreta o formato.
+    if (body.locator !== undefined) {
+      set.last_locator = body.locator && typeof body.locator === 'object'
+        ? body.locator
+        : null;
+    }
+
     // Título original vale para qualquer livro — inclusive os do Calibre:
     // a coluna fica fora de CatalogMetadata, então o sync nunca a toca.
     if (body.originalTitle !== undefined) {

@@ -27,6 +27,7 @@ import { readCalibreLibrary, readCoverBuffer } from './calibre-reader';
 // Node resolver `server-only` para o stub vazio em vez do throw.
 import { authorId } from '@/lib/authors';
 import { uploadCover } from '@/lib/storage';
+import { normalizarCapa } from '@/lib/covers';
 
 // A leitura do Calibre é reexportada daqui: quem consome o sync importa as
 // duas metades do mesmo módulo.
@@ -176,7 +177,8 @@ async function syncCover(
         if (atual?.cover_hash === hash && atual.image_url) return true;
 
         const thumbhash = await generateThumbHash(buf);
-        const imageUrl = await uploadCover(userId, bookId, buf, 'jpg');
+        const { buf: normalizada, ext } = await normalizarCapa(buf);
+        const imageUrl = await uploadCover(userId, bookId, normalizada, ext);
         await withUser(userId, (tx) =>
             tx
                 .update(books)
@@ -413,7 +415,9 @@ async function main() {
     console.log('📚 Iniciando sync do Calibre...\n');
 
     const calibrePath = calibrePathFromArgs();
-    const email = argValue('--email=') ?? '';
+    // E-mail do dono: --email=... ou OWNER_EMAIL no .env (mesmo fallback do
+    // db:sync-files, para não precisar repetir o e-mail a cada execução).
+    const email = argValue('--email=') ?? process.env.OWNER_EMAIL ?? '';
     const userId = await resolveUserId(email);
 
     const livros = await readCalibreLibrary(calibrePath);

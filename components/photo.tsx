@@ -4,8 +4,10 @@
 import Image from 'next/image';
 import { createPngDataUri } from 'unlazy/thumbhash';
 import { CoverBadges } from './cover-badges';
+import { OfflineBadge } from './offline-badge';
 
 export function Photo({
+  bookId,
   src,
   title,
   thumbhash,
@@ -16,6 +18,7 @@ export function Photo({
   nextUp = false,
   favorite = false,
 }: {
+  bookId?: number;
   src: string | null;
   title: string;
   thumbhash: string | null;
@@ -41,6 +44,7 @@ export function Photo({
           nextUp={nextUp}
           favorite={favorite}
         />
+        {bookId !== undefined && <OfflineBadge bookId={bookId} />}
       </div>
     );
   }
@@ -65,6 +69,7 @@ export function Photo({
         nextUp={nextUp}
         favorite={favorite}
       />
+      {bookId !== undefined && <OfflineBadge bookId={bookId} />}
     </div>
   );
 }

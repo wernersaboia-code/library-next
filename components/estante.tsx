@@ -33,6 +33,7 @@ export function Estante({
           className="block transition ease-in-out md:hover:scale-105"
         >
           <Photo
+            bookId={livro.id}
             src={livro.image_url}
             title={livro.title}
             thumbhash={livro.thumbhash}

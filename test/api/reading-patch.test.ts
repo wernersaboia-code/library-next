@@ -187,3 +187,24 @@ describe('título original', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('posição de retomada', () => {
+  it('grava o locator do leitor junto do progresso', async () => {
+    await PATCH('1', {
+      progressPercent: 30,
+      locator: { format: 'epub', cfi: 'epubcfi(/6/4!/2/2)' },
+    });
+    expect(ultimoSet.last_locator).toEqual({ format: 'epub', cfi: 'epubcfi(/6/4!/2/2)' });
+  });
+
+  it('locator nulo limpa a posição', async () => {
+    await PATCH('1', { locator: null });
+    expect(ultimoSet.last_locator).toBeNull();
+  });
+
+  it('pedido só com locator não reclama de "nada para atualizar"', async () => {
+    const res = await PATCH('1', { locator: { format: 'pdf', page: 3 } });
+    expect(res.status).toBe(200);
+    expect(ultimoSet.last_locator).toEqual({ format: 'pdf', page: 3 });
+  });
+});

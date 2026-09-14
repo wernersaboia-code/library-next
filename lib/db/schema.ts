@@ -97,6 +97,10 @@ export const books = pgTable(
     ready_to_read: boolean('ready_to_read').notNull().default(false),
     has_file: boolean('has_file').notNull().default(false),
 
+    // Posição para retomar a leitura: jsonb porque o formato varia por
+    // suporte (EPUB: cfi/href; PDF: página).
+    last_locator: jsonb('last_locator'),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow().notNull(),
   },
@@ -218,6 +222,28 @@ export const bookFiles = pgTable(
   })
 );
 
+// Marcador de página do leitor. Separado de `highlights` de propósito:
+// bookmark é navegação (pular para um ponto), não anotação. `locator` segue
+// o mesmo formato jsonb por suporte do `books.last_locator`.
+export const bookmarks = pgTable(
+  'bookmarks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull()
+      .references(() => appUsers.id, { onDelete: 'cascade' }),
+    bookId: integer('book_id').notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    locator: jsonb('locator').notNull(),
+    label: text('label'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow().notNull(),
+  },
+  (t) => ({
+    bookIdx: index('idx_bookmarks_book').on(t.bookId),
+    userIdx: index('idx_bookmarks_user').on(t.userId),
+  })
+);
+
 export type SelectBook = typeof books.$inferSelect;
 export type Book = Pick<
   SelectBook,
@@ -229,6 +255,7 @@ export type Author = Pick<SelectAuthor, 'id' | 'name'>;
 export type SelectHighlight = typeof highlights.$inferSelect;
 export type SelectCollection = typeof collections.$inferSelect;
 export type SelectBookFile = typeof bookFiles.$inferSelect;
+export type SelectBookmark = typeof bookmarks.$inferSelect;
 
 export const booksRelations = relations(books, ({ many }) => ({
   bookToAuthor: many(bookToAuthor),

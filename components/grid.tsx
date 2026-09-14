@@ -178,6 +178,7 @@ export function BooksGrid({
             const marcado = selecionados.has(book.id);
             const capa = (
               <Photo
+                bookId={book.id}
                 src={book.image_url}
                 title={book.title}
                 thumbhash={book.thumbhash}

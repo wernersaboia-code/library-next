@@ -8,7 +8,10 @@ const createSignedUrl = vi.fn(() => ({
   data: { signedUrl: 'https://cdn/book.signed' },
   error: null,
 }));
-const from = vi.fn(() => ({ upload, getPublicUrl, createSignedUrl }));
+const list = vi.fn();
+const remove = vi.fn();
+const download = vi.fn();
+const from = vi.fn(() => ({ upload, getPublicUrl, createSignedUrl, list, remove, download }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
@@ -84,5 +87,52 @@ describe('storage', () => {
     const url = await getSignedBookUrl('u1/42/book.epub');
     expect(createSignedUrl).toHaveBeenCalledWith('u1/42/book.epub', 3600);
     expect(url).toBe('https://cdn/book.signed');
+  });
+
+  it('lista objetos recursivamente descendo nas pastas', async () => {
+    list.mockImplementation((prefix: string) => {
+      if (prefix === '') {
+        return Promise.resolve({
+          data: [{ name: 'u1', id: null, metadata: null }],
+          error: null,
+        });
+      }
+      if (prefix === 'u1') {
+        return Promise.resolve({
+          data: [{ name: 'book.epub', id: 'x', metadata: { size: 123 } }],
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
+    const { listAllObjects } = await import('@/lib/storage');
+    const objetos = await listAllObjects('book-files');
+    expect(objetos).toEqual([{ path: 'u1/book.epub', size: 123 }]);
+  });
+
+  it('remove objetos em lote e conta os removidos', async () => {
+    remove.mockResolvedValue({ data: [{ name: 'a' }], error: null });
+    const { removeObjects } = await import('@/lib/storage');
+    const n = await removeObjects('covers', ['a', 'b']);
+    expect(remove).toHaveBeenCalledWith(['a', 'b']);
+    expect(n).toBe(1);
+  });
+
+  it('não chama o Storage quando não há o que remover', async () => {
+    const { removeObjects } = await import('@/lib/storage');
+    const n = await removeObjects('covers', []);
+    expect(n).toBe(0);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('baixa o conteúdo de um objeto', async () => {
+    download.mockResolvedValue({
+      data: { arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer },
+      error: null,
+    });
+    const { downloadObject } = await import('@/lib/storage');
+    const buf = await downloadObject('covers', 'u1/42/cover.jpg');
+    expect(download).toHaveBeenCalledWith('u1/42/cover.jpg');
+    expect([...buf]).toEqual([1, 2, 3]);
   });
 });

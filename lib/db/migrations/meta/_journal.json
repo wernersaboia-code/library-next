@@ -120,6 +120,20 @@
       "when": 1786828000000,
       "tag": "0016_original_title",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786834000000,
+      "tag": "0017_book_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786835000000,
+      "tag": "0018_reader_bookmarks",
+      "breakpoints": true
     }
   ]
 }

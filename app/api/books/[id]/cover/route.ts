@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
-import sharp from 'sharp';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { withUser } from '@/lib/db/with-user';
 import { books } from '@/lib/db/schema';
@@ -58,7 +57,7 @@ export async function POST(
           { error: 'coverId inválido' }, { status: 400 });
       }
       const buf = await fetchOpenLibraryCover(coverId);
-      const imageUrl = await applyCoverFromBuffer(userId, bookId, buf, 'jpg');
+      const imageUrl = await applyCoverFromBuffer(userId, bookId, buf);
       return NextResponse.json({ success: true, imageUrl });
     }
 
@@ -80,12 +79,9 @@ export async function POST(
     }
 
     const original = Buffer.from(await arquivo.arrayBuffer());
-    // webp é convertido para jpeg: a allowlist do Storage só aceita png/jpg.
-    const { buf, ext } = arquivo.type === 'image/webp'
-      ? { buf: await sharp(original).jpeg({ quality: 88 }).toBuffer(), ext: 'jpg' as const }
-      : { buf: original, ext: arquivo.type === 'image/png' ? 'png' as const : 'jpg' as const };
-
-    const imageUrl = await applyCoverFromBuffer(userId, bookId, buf, ext);
+    // A normalização (resize + JPEG) fica em applyCoverFromBuffer: o Storage
+    // recebe sempre uma capa leve, qualquer que seja o tipo enviado.
+    const imageUrl = await applyCoverFromBuffer(userId, bookId, original);
     return NextResponse.json({ success: true, imageUrl });
   } catch (err) {
     return errorResponse(err, 'Erro ao aplicar a capa');

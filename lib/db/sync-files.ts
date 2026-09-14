@@ -18,8 +18,11 @@ import { withUser } from './with-user';
 import { readCalibreBookFile, readCalibreLibrary } from './calibre-reader';
 import { uploadBookFile, StorageQuotaError } from '@/lib/storage';
 
-const MAX_TOTAL_BYTES = Number(process.env.BOOK_FILES_MAX_BYTES ?? 800 * 1024 * 1024);
-const MAX_FILE_BYTES = 100 * 1024 * 1024;
+// Tetos do bucket `book-files`. Padrão 500MB total (o plano Free do Supabase
+// dá 1GB de Storage e as capas também contam) e 50MB por arquivo (o máximo de
+// upload por arquivo no plano Free). Ajuste as envs ao subir de plano.
+const MAX_TOTAL_BYTES = Number(process.env.BOOK_FILES_MAX_BYTES ?? 500 * 1024 * 1024);
+const MAX_FILE_BYTES = Number(process.env.BOOK_FILE_MAX_BYTES ?? 50 * 1024 * 1024);
 
 function argValue(prefix: string): string | undefined {
     const a = process.argv.find((x) => x.startsWith(prefix));
@@ -88,7 +91,9 @@ async function usedBytes(userId: string): Promise<number> {
 }
 
 async function main() {
-    const email = argValue('--email=') ?? '';
+    // E-mail do dono: --email=... na linha de comando, ou OWNER_EMAIL no .env
+    // (single-user: evita ter que lembrar/decorar o e-mail a cada execução).
+    const email = argValue('--email=') ?? process.env.OWNER_EMAIL ?? '';
     const userId = await resolveUserId(email);
     const calibrePath = calibrePathFromArgs();
     const onlyBookId = argValue('--book-id=') ? Number(argValue('--book-id=')) : undefined;

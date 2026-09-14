@@ -9,7 +9,37 @@ import { uploadCover } from '@/lib/storage';
 export const MAX_COVER_BYTES = 5 * 1024 * 1024;
 export const TIPOS_ACEITOS = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+// As capas são exibidas em miniatura (grid/leitor): guardar o original em
+// resolução cheia é o que enchia o bucket. Normalizamos para no máximo
+// 800x1200 em JPEG — sobra para telas HiDPI e derruba o tamanho em ~10x.
+export const COVER_MAX_WIDTH = 800;
+export const COVER_MAX_HEIGHT = 1200;
+export const COVER_JPEG_QUALITY = 80;
+
 const OPENLIBRARY_COVER_HOST = 'https://covers.openlibrary.org';
+
+/**
+ * Redimensiona e recomprime uma capa. Se o buffer não for uma imagem
+ * decodificável, devolve-o intacto (melhor guardar algo do que derrubar o
+ * sync); o `ext` é sempre 'jpg' para casar com a saída normalizada.
+ */
+export async function normalizarCapa(buf: Buffer): Promise<{ buf: Buffer; ext: 'jpg' }> {
+  try {
+    const normalizada = await sharp(buf)
+      .rotate() // aplica a orientação do EXIF antes de redimensionar
+      .resize({
+        width: COVER_MAX_WIDTH,
+        height: COVER_MAX_HEIGHT,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: COVER_JPEG_QUALITY, mozjpeg: true })
+      .toBuffer();
+    return { buf: normalizada, ext: 'jpg' };
+  } catch {
+    return { buf, ext: 'jpg' };
+  }
+}
 
 async function gerarThumbhash(buf: Buffer): Promise<string | null> {
   try {
@@ -25,10 +55,11 @@ async function gerarThumbhash(buf: Buffer): Promise<string | null> {
 }
 
 export async function applyCoverFromBuffer(
-  userId: string, bookId: number, buf: Buffer, ext: 'jpg' | 'png'
+  userId: string, bookId: number, buf: Buffer
 ): Promise<string> {
   const thumbhash = await gerarThumbhash(buf);
-  const imageUrl = await uploadCover(userId, bookId, buf, ext);
+  const { buf: normalizada, ext } = await normalizarCapa(buf);
+  const imageUrl = await uploadCover(userId, bookId, normalizada, ext);
   await withUser(userId, (tx) =>
     tx.update(books).set({ image_url: imageUrl, thumbhash })
       .where(eq(books.id, bookId)));

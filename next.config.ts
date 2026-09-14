@@ -1,3 +1,5 @@
+import { withSerwist } from '@serwist/turbopack';
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -20,4 +22,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

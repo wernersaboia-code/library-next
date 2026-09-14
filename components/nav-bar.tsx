@@ -35,6 +35,11 @@ export const LINKS = [
     ativo: (path: string) => path.startsWith('/desejados'),
   },
   {
+    href: '/baixados',
+    label: 'Baixados',
+    ativo: (path: string) => path.startsWith('/baixados'),
+  },
+  {
     href: '/settings',
     label: 'Configurações',
     ativo: (path: string) => path.startsWith('/settings'),

@@ -59,17 +59,38 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 pnpm install
 cp .env.example .env   # preencha as variáveis
 pnpm db:migrate        # cria a estrutura do banco
+pnpm db:setup-storage  # cria os buckets covers/book-files no Storage
 pnpm dev
 ```
 
-Para trazer os livros do Calibre:
+Para trazer os livros do Calibre (catálogo):
 
 ```bash
-pnpm db:import-calibre --email=voce@exemplo.com --path="/caminho/da/biblioteca"
+pnpm db:import-calibre --email=wernersaboia@gmail.com --path="/caminho/da/biblioteca"
+```
+
+Para subir os **arquivos** de leitura (EPUB/PDF) dos livros que você marcou com
+"Preparar para leitura" no app:
+
+```bash
+pnpm db:sync-files -- --email=wernersaboia@gmail.com --path="D:\Caminho\Calibre Library"
 ```
 
 O `--path` aponta para a pasta que contém o `metadata.db`. Alternativamente,
-defina `CALIBRE_PATH` no `.env`.
+defina `CALIBRE_PATH` no `.env` e o `--path` fica opcional. Sem argumento
+nenhum, o `sync-files` usa o `CALIBRE_PATH` ou o caminho padrão
+`C:\Livros\Calibre Portable\Calibre Library`.
+
+Neste projeto o `.env` já define `OWNER_EMAIL`, então o dia a dia é só:
+
+```bash
+pnpm db:sync-files
+# ou, se a biblioteca não estiver no CALIBRE_PATH/padrão:
+pnpm db:sync-files -- --path="D:\Caminho\Calibre Library"
+```
+
+> O `--` antes de `--email`/`--path` é necessário para o pnpm repassar os
+> argumentos ao script.
 
 ## Comandos
 
@@ -83,6 +104,9 @@ defina `CALIBRE_PATH` no `.env`.
 | `pnpm db:migrate` | Aplica migrations — **estrutura** do banco |
 | `pnpm db:import-calibre` | Importa **livros** do Calibre |
 | `pnpm db:sync-files` | Sobe os **arquivos** (EPUB/PDF) dos livros marcados no app |
+| `pnpm db:setup-storage` | Cria os buckets `covers` e `book-files` (idempotente) |
+| `pnpm db:normalize-covers` | Recomprime capas antigas em resolução cheia (dry-run) |
+| `pnpm db:cleanup-storage` | Remove objetos órfãos do Storage (dry-run) |
 | `pnpm db:generate` | Gera migration a partir do schema |
 | `pnpm db:studio` | Drizzle Studio |
 
@@ -90,6 +114,10 @@ defina `CALIBRE_PATH` no `.env`.
 confundir: o primeiro mexe na estrutura (raro), o segundo traz os livros (a cada
 mudança na biblioteca). Quando os dois forem necessários, a migração vem
 primeiro. Ver [docs/atualizar-acervo.md](docs/atualizar-acervo.md).
+
+`db:normalize-covers` e `db:cleanup-storage` são **dry-run por padrão**: mostram
+o que fariam sem tocar em nada. Para aplicar de verdade, acrescente `-- --apply`
+(ex.: `pnpm db:cleanup-storage -- --apply`).
 
 ## O que a importação nunca sobrescreve
 

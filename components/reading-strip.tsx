@@ -29,6 +29,7 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
               className="w-24 shrink-0 snap-start rounded-xl transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hover:scale-105"
             >
               <Photo
+                bookId={livro.id}
                 src={livro.image_url}
                 title={livro.title}
                 thumbhash={livro.thumbhash}

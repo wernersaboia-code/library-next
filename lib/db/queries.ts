@@ -297,6 +297,7 @@ export async function fetchBookById(userId: string, id: string) {
                 source: books.source,
                 ready_to_read: books.ready_to_read,
                 has_file: books.has_file,
+                last_locator: books.last_locator,
                 progress_percent: books.progress_percent,
                 progress_updated_at: books.progress_updated_at,
                 dnf_reason: books.dnf_reason,

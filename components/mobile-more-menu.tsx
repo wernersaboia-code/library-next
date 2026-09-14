@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   BookOpenIcon,
+  HardDriveDownloadIcon,
   HeartIcon,
   LogOutIcon,
   MoreHorizontalIcon,
@@ -21,6 +22,7 @@ import { ThemeToggle } from './theme-toggle';
 const ICONES_MAIS: Record<string, typeof BookOpenIcon> = {
   '/leituras': BookOpenIcon,
   '/favoritos': HeartIcon,
+  '/baixados': HardDriveDownloadIcon,
   '/settings': SettingsIcon,
 };
 

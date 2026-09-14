@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchBookById } from '@/lib/db/queries';
+import { fetchBookmarks } from '@/lib/db/bookmarks';
 import { ReaderClient } from './reader-client';
 
 export default async function ReadPage(props: {
@@ -24,5 +25,15 @@ export default async function ReadPage(props: {
     );
   }
 
-  return <ReaderClient bookId={book.id} title={book.title} />;
+  const marcadores = await fetchBookmarks(userId, book.id);
+
+  return (
+    <ReaderClient
+      bookId={book.id}
+      title={book.title}
+      translationEnabled={Boolean(process.env.GOOGLE_TRANSLATE_API_KEY)}
+      initialLocator={book.last_locator}
+      initialBookmarks={marcadores}
+    />
+  );
 }
