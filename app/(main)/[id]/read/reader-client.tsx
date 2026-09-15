@@ -43,6 +43,11 @@ const FONTE_MIN = 60;
 const FONTE_MAX = 220;
 const FONTE_PASSO = 10;
 
+// Altura de linha do EPUB (não se aplica a PDF).
+const LINHA_STORAGE_KEY = 'leitor-linha';
+const LINHA_PADRAO = 1.5;
+const LINHAS = [1.2, 1.4, 1.6, 1.8, 2.0, 2.2];
+
 export type Locator =
   | { format: 'epub'; cfi: string; href?: string }
   | { format: 'pdf'; page: number };
@@ -278,6 +283,42 @@ export function ReaderClient({
   function aumentarFonte() {
     setFonte((f) => Math.min(FONTE_MAX, f + FONTE_PASSO));
   }
+
+  const [altura, setAltura] = useState(LINHA_PADRAO);
+  useEffect(() => {
+    try {
+      const salvo = Number(localStorage.getItem(LINHA_STORAGE_KEY));
+      if (Number.isFinite(salvo) && salvo >= 1 && salvo <= 3) setAltura(salvo);
+    } catch {
+      // ignore
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LINHA_STORAGE_KEY, String(altura));
+    } catch {
+      // ignore
+    }
+  }, [altura]);
+
+  // Atalhos de fonte/zoom: Ctrl/⌘ + / − (e Ctrl/⌘ 0 para voltar ao padrão).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setFonte((f) => Math.min(FONTE_MAX, f + FONTE_PASSO));
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        setFonte((f) => Math.max(FONTE_MIN, f - FONTE_PASSO));
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setFonte(FONTE_PADRAO);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     function aoMudarTelaCheia() {
@@ -553,7 +594,7 @@ export function ReaderClient({
               disabled={!info || fonte <= FONTE_MIN}
               className="rounded-md px-2 py-1 hover:bg-accent disabled:opacity-40"
               aria-label="Diminuir tamanho da fonte"
-              title="Diminuir fonte / zoom"
+              title="Diminuir fonte / zoom (Ctrl -)"
             >
               A−
             </button>
@@ -564,11 +605,27 @@ export function ReaderClient({
               disabled={!info || fonte >= FONTE_MAX}
               className="rounded-md px-2 py-1 hover:bg-accent disabled:opacity-40"
               aria-label="Aumentar tamanho da fonte"
-              title="Aumentar fonte / zoom"
+              title="Aumentar fonte / zoom (Ctrl +)"
             >
               A+
             </button>
           </div>
+          {info?.format === 'epub' && (
+            <label className="flex items-center gap-1" title="Altura de linha">
+              <span className="text-xs">Linha</span>
+              <select
+                value={altura}
+                onChange={(e) => setAltura(Number(e.target.value))}
+                className="h-7 rounded-md border border-input bg-background px-1 text-xs text-foreground"
+              >
+                {LINHAS.map((l) => (
+                  <option key={l} value={l}>
+                    {l.toFixed(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={ciclarTema}
@@ -625,6 +682,7 @@ export function ReaderClient({
               jumpPercent={jumpPercent}
               tema={tema}
               fonte={fonte}
+              altura={altura}
               onPosition={registrarPosicao}
             />
           )}
@@ -748,7 +806,7 @@ export function ReaderClient({
 type OnPosition = (percentual: number, locator: Locator) => void;
 
 function EpubView({
-  source, initialCfi, jumpTo, jumpPercent, tema, fonte, onPosition,
+  source, initialCfi, jumpTo, jumpPercent, tema, fonte, altura, onPosition,
 }: {
   source: string | ArrayBuffer;
   initialCfi: string | null;
@@ -756,6 +814,7 @@ function EpubView({
   jumpPercent: { valor: number } | null;
   tema: Tema;
   fonte: number;
+  altura: number;
   onPosition: OnPosition;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -770,6 +829,8 @@ function EpubView({
   temaRef.current = tema;
   const fonteRef = useRef(fonte);
   fonteRef.current = fonte;
+  const alturaRef = useRef(altura);
+  alturaRef.current = altura;
 
   useEffect(() => {
     if (!container.current) return;
@@ -803,6 +864,7 @@ function EpubView({
         }
         rendition.themes.select(temaRef.current);
         rendition.themes.fontSize(`${fonteRef.current}%`);
+        rendition.themes.override('line-height', String(alturaRef.current));
 
         // O epubjs precisa das dimensões resolvidas para paginar. O container
         // é flex e pode ganhar tamanho depois do primeiro paint; re-resiza no
@@ -865,7 +927,8 @@ function EpubView({
     if (!r) return;
     r.themes.select(tema);
     r.themes.fontSize(`${fonte}%`);
-  }, [tema, fonte]);
+    r.themes.override('line-height', String(altura));
+  }, [tema, fonte, altura]);
 
   useEffect(() => {
     if (!jumpPercent) return;
@@ -884,6 +947,11 @@ function EpubView({
   // epubjs nem sempre pega em desktop.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // Não intercepta setas enquanto o foco está num campo (ex.: "Ir para").
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) {
+        return;
+      }
       if (e.key === 'ArrowRight') void renditionRef.current?.next();
       else if (e.key === 'ArrowLeft') void renditionRef.current?.prev();
     }
