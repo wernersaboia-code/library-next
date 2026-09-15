@@ -36,6 +36,13 @@ const ROTULO_TEMA: Record<Tema, string> = {
 
 const TEMA_STORAGE_KEY = 'leitor-tema';
 
+// Tamanho de fonte (EPUB) / zoom (PDF), em %. O mesmo controle serve aos dois.
+const FONTE_STORAGE_KEY = 'leitor-fonte';
+const FONTE_PADRAO = 100;
+const FONTE_MIN = 60;
+const FONTE_MAX = 220;
+const FONTE_PASSO = 10;
+
 export type Locator =
   | { format: 'epub'; cfi: string; href?: string }
   | { format: 'pdf'; page: number };
@@ -246,6 +253,31 @@ export function ReaderClient({
       // ignore
     }
   }, [tema]);
+
+  const [fonte, setFonte] = useState(FONTE_PADRAO);
+  useEffect(() => {
+    try {
+      const salvo = Number(localStorage.getItem(FONTE_STORAGE_KEY));
+      if (Number.isFinite(salvo) && salvo >= FONTE_MIN && salvo <= FONTE_MAX) {
+        setFonte(salvo);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(FONTE_STORAGE_KEY, String(fonte));
+    } catch {
+      // ignore
+    }
+  }, [fonte]);
+  function diminuirFonte() {
+    setFonte((f) => Math.max(FONTE_MIN, f - FONTE_PASSO));
+  }
+  function aumentarFonte() {
+    setFonte((f) => Math.min(FONTE_MAX, f + FONTE_PASSO));
+  }
 
   useEffect(() => {
     function aoMudarTelaCheia() {
@@ -514,6 +546,29 @@ export function ReaderClient({
         {erroIrPara && <span role="alert" className="text-red-600">{erroIrPara}</span>}
 
         <div className="ml-auto flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={diminuirFonte}
+              disabled={!info || fonte <= FONTE_MIN}
+              className="rounded-md px-2 py-1 hover:bg-accent disabled:opacity-40"
+              aria-label="Diminuir tamanho da fonte"
+              title="Diminuir fonte / zoom"
+            >
+              A−
+            </button>
+            <span className="w-10 text-center tabular-nums">{fonte}%</span>
+            <button
+              type="button"
+              onClick={aumentarFonte}
+              disabled={!info || fonte >= FONTE_MAX}
+              className="rounded-md px-2 py-1 hover:bg-accent disabled:opacity-40"
+              aria-label="Aumentar tamanho da fonte"
+              title="Aumentar fonte / zoom"
+            >
+              A+
+            </button>
+          </div>
           <button
             type="button"
             onClick={ciclarTema}
@@ -569,6 +624,7 @@ export function ReaderClient({
               jumpTo={jumpTo}
               jumpPercent={jumpPercent}
               tema={tema}
+              fonte={fonte}
               onPosition={registrarPosicao}
             />
           )}
@@ -577,6 +633,7 @@ export function ReaderClient({
               source={info.data ?? info.url ?? ''}
               initialPage={locatorInicialRef.current?.format === 'pdf' ? locatorInicialRef.current.page : 1}
               jumpTo={jumpTo}
+              escala={fonte / 100}
               onPosition={registrarPosicao}
               onPagina={(page, total) => setPdfInfo({ page, total })}
             />
@@ -691,13 +748,14 @@ export function ReaderClient({
 type OnPosition = (percentual: number, locator: Locator) => void;
 
 function EpubView({
-  source, initialCfi, jumpTo, jumpPercent, tema, onPosition,
+  source, initialCfi, jumpTo, jumpPercent, tema, fonte, onPosition,
 }: {
   source: string | ArrayBuffer;
   initialCfi: string | null;
   jumpTo: Locator | null;
   jumpPercent: { valor: number } | null;
   tema: Tema;
+  fonte: number;
   onPosition: OnPosition;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -710,6 +768,8 @@ function EpubView({
   initialCfiRef.current = initialCfi;
   const temaRef = useRef(tema);
   temaRef.current = tema;
+  const fonteRef = useRef(fonte);
+  fonteRef.current = fonte;
 
   useEffect(() => {
     if (!container.current) return;
@@ -742,6 +802,7 @@ function EpubView({
           });
         }
         rendition.themes.select(temaRef.current);
+        rendition.themes.fontSize(`${fonteRef.current}%`);
 
         // O epubjs precisa das dimensões resolvidas para paginar. O container
         // é flex e pode ganhar tamanho depois do primeiro paint; re-resiza no
@@ -800,8 +861,11 @@ function EpubView({
   }, [jumpTo]);
 
   useEffect(() => {
-    renditionRef.current?.themes.select(tema);
-  }, [tema]);
+    const r = renditionRef.current;
+    if (!r) return;
+    r.themes.select(tema);
+    r.themes.fontSize(`${fonte}%`);
+  }, [tema, fonte]);
 
   useEffect(() => {
     if (!jumpPercent) return;
@@ -858,11 +922,12 @@ function EpubView({
 }
 
 function PdfView({
-  source, initialPage, jumpTo, onPosition, onPagina,
+  source, initialPage, jumpTo, escala, onPosition, onPagina,
 }: {
   source: string | ArrayBuffer;
   initialPage: number;
   jumpTo: Locator | null;
+  escala: number;
   onPosition: OnPosition;
   onPagina: (page: number, total: number) => void;
 }) {
@@ -911,6 +976,7 @@ function PdfView({
         <PdfInner
           src={source}
           page={page}
+          escala={escala}
           onNumPages={setNumPages}
           onErro={setErro}
         />
@@ -926,10 +992,11 @@ function PdfView({
 }
 
 function PdfInner({
-  src, page, onNumPages, onErro,
+  src, page, escala, onNumPages, onErro,
 }: {
   src: string | ArrayBuffer;
   page: number;
+  escala: number;
   onNumPages: (n: number) => void;
   onErro: (e: string) => void;
 }) {
@@ -960,7 +1027,7 @@ function PdfInner({
       onLoadError={() => onErro('Não foi possível renderizar o PDF.')}
       className="flex justify-center py-4"
     >
-      <Page pageNumber={page} renderTextLayer renderAnnotationLayer={false} />
+      <Page pageNumber={page} scale={escala} renderTextLayer renderAnnotationLayer={false} />
     </Document>
   );
 }
