@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType, type FormEvent } from 'react';
 import type { DocumentProps, PageProps } from 'react-pdf';
 import Link from 'next/link';
-import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
 import type { Bookmark } from '@/lib/db/bookmarks';
 import { lerLivro, salvarLivro, pedirPersistencia } from '@/lib/offline/books';
 import { useOffline } from '@/components/offline-provider';
@@ -15,6 +15,26 @@ type FileInfo = {
   data?: ArrayBuffer;
   offline?: boolean;
 };
+
+type Tema = 'claro' | 'sepia' | 'escuro';
+
+// Fundo/texto do leitor. O tema vale para a área de leitura (EPUB e PDF) e é
+// aplicado também ao conteúdo do iframe do EPUB.
+const TEMAS: Record<Tema, { fundo: string; texto: string }> = {
+  claro: { fundo: '#ffffff', texto: '#1a1a1a' },
+  sepia: { fundo: '#f4ecd8', texto: '#3a3226' },
+  escuro: { fundo: '#1a1a1a', texto: '#d4d4d4' },
+};
+
+const ORDEM_TEMAS: Tema[] = ['claro', 'sepia', 'escuro'];
+
+const ROTULO_TEMA: Record<Tema, string> = {
+  claro: 'Claro',
+  sepia: 'Sépia',
+  escuro: 'Escuro',
+};
+
+const TEMA_STORAGE_KEY = 'leitor-tema';
 
 export type Locator =
   | { format: 'epub'; cfi: string; href?: string }
@@ -201,6 +221,83 @@ export function ReaderClient({
     [agendarSalvar]
   );
 
+  // ─── Tema / tela cheia / ir para ─────────────────────────────
+  const raizRef = useRef<HTMLDivElement>(null);
+  const [tema, setTema] = useState<Tema>('claro');
+  const [telaCheia, setTelaCheia] = useState(false);
+  const [pdfInfo, setPdfInfo] = useState<{ page: number; total: number } | null>(null);
+  const [jumpPercent, setJumpPercent] = useState<{ valor: number } | null>(null);
+  const [irParaValor, setIrParaValor] = useState('');
+  const [erroIrPara, setErroIrPara] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(TEMA_STORAGE_KEY) as Tema | null;
+      if (salvo && salvo in TEMAS) setTema(salvo);
+    } catch {
+      // localStorage indisponível: fica no tema padrão.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TEMA_STORAGE_KEY, tema);
+    } catch {
+      // ignore
+    }
+  }, [tema]);
+
+  useEffect(() => {
+    function aoMudarTelaCheia() {
+      setTelaCheia(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener('fullscreenchange', aoMudarTelaCheia);
+    return () => document.removeEventListener('fullscreenchange', aoMudarTelaCheia);
+  }, []);
+
+  function ciclarTema() {
+    const i = ORDEM_TEMAS.indexOf(tema);
+    setTema(ORDEM_TEMAS[(i + 1) % ORDEM_TEMAS.length]);
+  }
+
+  async function alternarTelaCheia() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await raizRef.current?.requestFullscreen();
+    } catch {
+      // O navegador pode recusar (ex.: sem permissão de gesto); sem efeito.
+    }
+  }
+
+  function irParaPosicao(e: FormEvent) {
+    e.preventDefault();
+    setErroIrPara(null);
+    const n = Number(irParaValor.replace(',', '.'));
+    if (!Number.isFinite(n)) {
+      setErroIrPara('Valor inválido.');
+      return;
+    }
+    if (info?.format === 'pdf') {
+      const total = pdfInfo?.total ?? 0;
+      const pagina = Math.round(n);
+      if (pagina < 1 || (total > 0 && pagina > total)) {
+        setErroIrPara(total > 0 ? `Use 1–${total}.` : 'Página inválida.');
+        return;
+      }
+      setJumpTo({ format: 'pdf', page: pagina });
+    } else if (info?.format === 'epub') {
+      setJumpPercent({ valor: Math.min(100, Math.max(0, n)) });
+    }
+    setIrParaValor('');
+  }
+
+  const posicaoTexto =
+    info?.format === 'pdf' && pdfInfo
+      ? `Página ${pdfInfo.page} de ${pdfInfo.total}${percentual !== null ? ` · ${Math.round(percentual)}%` : ''}`
+      : percentual !== null
+        ? `${Math.round(percentual)}%`
+        : '—';
+
   // ─── Marcadores ──────────────────────────────────────────────
   const [marcadores, setMarcadores] = useState<Bookmark[]>(initialBookmarks);
   const [painel, setPainel] = useState(false);
@@ -348,7 +445,7 @@ export function ReaderClient({
   }
 
   return (
-    <div className="relative flex h-full flex-col bg-card">
+    <div ref={raizRef} className="relative flex h-full flex-col bg-card">
       <div className="flex items-center gap-3 border-b border-border px-4 py-2">
         <Link
           href={`/${bookId}`}
@@ -390,6 +487,57 @@ export function ReaderClient({
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-1.5 text-xs text-muted-foreground">
+        <span className="tabular-nums" aria-live="polite">{posicaoTexto}</span>
+
+        <form onSubmit={irParaPosicao} className="flex items-center gap-1">
+          <input
+            type="number"
+            inputMode="numeric"
+            value={irParaValor}
+            onChange={(e) => setIrParaValor(e.target.value)}
+            placeholder={info?.format === 'pdf' ? 'Página' : '%'}
+            aria-label={info?.format === 'pdf' ? 'Ir para a página' : 'Ir para o percentual'}
+            min={1}
+            max={info?.format === 'pdf' ? (pdfInfo?.total || undefined) : 100}
+            disabled={!info}
+            className="h-7 w-20 rounded-md border border-input bg-background px-2 text-xs text-foreground disabled:opacity-40"
+          />
+          <button
+            type="submit"
+            disabled={!info}
+            className="rounded-md border border-input px-2 py-1 text-xs hover:bg-accent disabled:opacity-40"
+          >
+            Ir
+          </button>
+        </form>
+        {erroIrPara && <span role="alert" className="text-red-600">{erroIrPara}</span>}
+
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={ciclarTema}
+            className="rounded-md px-2 py-1 hover:bg-accent"
+            title="Alternar tema do leitor"
+          >
+            Tema: {ROTULO_TEMA[tema]}
+          </button>
+          <button
+            type="button"
+            onClick={() => void alternarTelaCheia()}
+            className="flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
+            title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
+          >
+            {telaCheia ? (
+              <Minimize2Icon className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <Maximize2Icon className="h-3.5 w-3.5" aria-hidden />
+            )}
+            <span>{telaCheia ? 'Sair' : 'Tela cheia'}</span>
+          </button>
+        </div>
+      </div>
+
       {offlineMsg && (
         <p role="status" className="px-4 py-1 text-xs text-muted-foreground">
           {offlineMsg}
@@ -409,21 +557,31 @@ export function ReaderClient({
         </div>
       )}
 
-      {info?.format === 'epub' && (
-        <EpubView
-          source={info.data ?? info.url ?? ''}
-          initialCfi={locatorInicialRef.current?.format === 'epub' ? locatorInicialRef.current.cfi : null}
-          jumpTo={jumpTo}
-          onPosition={registrarPosicao}
-        />
-      )}
-      {info?.format === 'pdf' && (
-        <PdfView
-          source={info.data ?? info.url ?? ''}
-          initialPage={locatorInicialRef.current?.format === 'pdf' ? locatorInicialRef.current.page : 1}
-          jumpTo={jumpTo}
-          onPosition={registrarPosicao}
-        />
+      {info && (
+        <div
+          className="relative flex flex-1 flex-col overflow-hidden"
+          style={{ backgroundColor: TEMAS[tema].fundo, color: TEMAS[tema].texto }}
+        >
+          {info.format === 'epub' && (
+            <EpubView
+              source={info.data ?? info.url ?? ''}
+              initialCfi={locatorInicialRef.current?.format === 'epub' ? locatorInicialRef.current.cfi : null}
+              jumpTo={jumpTo}
+              jumpPercent={jumpPercent}
+              tema={tema}
+              onPosition={registrarPosicao}
+            />
+          )}
+          {info.format === 'pdf' && (
+            <PdfView
+              source={info.data ?? info.url ?? ''}
+              initialPage={locatorInicialRef.current?.format === 'pdf' ? locatorInicialRef.current.page : 1}
+              jumpTo={jumpTo}
+              onPosition={registrarPosicao}
+              onPagina={(page, total) => setPdfInfo({ page, total })}
+            />
+          )}
+        </div>
       )}
 
       {painel && (
@@ -533,20 +691,25 @@ export function ReaderClient({
 type OnPosition = (percentual: number, locator: Locator) => void;
 
 function EpubView({
-  source, initialCfi, jumpTo, onPosition,
+  source, initialCfi, jumpTo, jumpPercent, tema, onPosition,
 }: {
   source: string | ArrayBuffer;
   initialCfi: string | null;
   jumpTo: Locator | null;
+  jumpPercent: { valor: number } | null;
+  tema: Tema;
   onPosition: OnPosition;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const renditionRef = useRef<import('epubjs').Rendition | null>(null);
+  const livroRef = useRef<import('epubjs').Book | null>(null);
   const onPositionRef = useRef(onPosition);
   onPositionRef.current = onPosition;
   const initialCfiRef = useRef(initialCfi);
   initialCfiRef.current = initialCfi;
+  const temaRef = useRef(tema);
+  temaRef.current = tema;
 
   useEffect(() => {
     if (!container.current) return;
@@ -558,6 +721,7 @@ function EpubView({
       try {
         const ePub = (await import('epubjs')).default;
         livro = ePub(source);
+        livroRef.current = livro;
         await livro.ready;
         if (!aberto || !container.current) return;
         const rendition = livro.renderTo(container.current, {
@@ -568,6 +732,16 @@ function EpubView({
         });
         renditionRef.current = rendition;
         await rendition.display(initialCfiRef.current ?? undefined);
+
+        // Tema do leitor dentro do iframe do EPUB (o CSS do livro não vem
+        // com fundo/texto próprios de forma confiável).
+        for (const [nome, t] of Object.entries(TEMAS)) {
+          rendition.themes.register(nome, {
+            body: { background: t.fundo, color: t.texto },
+            a: { color: t.texto },
+          });
+        }
+        rendition.themes.select(temaRef.current);
 
         // O epubjs precisa das dimensões resolvidas para paginar. O container
         // é flex e pode ganhar tamanho depois do primeiro paint; re-resiza no
@@ -614,6 +788,7 @@ function EpubView({
       aberto = false;
       observador?.disconnect();
       renditionRef.current = null;
+      livroRef.current = null;
       livro?.destroy();
     };
   }, [source]);
@@ -623,6 +798,23 @@ function EpubView({
       void renditionRef.current.display(jumpTo.cfi);
     }
   }, [jumpTo]);
+
+  useEffect(() => {
+    renditionRef.current?.themes.select(tema);
+  }, [tema]);
+
+  useEffect(() => {
+    if (!jumpPercent) return;
+    const livro = livroRef.current;
+    const rendition = renditionRef.current;
+    if (!livro || !rendition) return;
+    try {
+      const cfi = livro.locations?.cfiFromPercentage(jumpPercent.valor / 100);
+      if (cfi) void rendition.display(cfi);
+    } catch {
+      // locations ainda não geradas; dá para tentar de novo.
+    }
+  }, [jumpPercent]);
 
   // Navegação por teclado (setas) além dos botões — o gesto de swipe do
   // epubjs nem sempre pega em desktop.
@@ -666,12 +858,13 @@ function EpubView({
 }
 
 function PdfView({
-  source, initialPage, jumpTo, onPosition,
+  source, initialPage, jumpTo, onPosition, onPagina,
 }: {
   source: string | ArrayBuffer;
   initialPage: number;
   jumpTo: Locator | null;
   onPosition: OnPosition;
+  onPagina: (page: number, total: number) => void;
 }) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [page, setPage] = useState(initialPage);
@@ -680,9 +873,11 @@ function PdfView({
   useEffect(() => {
     if (numPages && numPages > 0) {
       const p = Math.min(page, numPages);
+      if (p !== page) setPage(p);
       onPosition((p / numPages) * 100, { format: 'pdf', page: p });
+      onPagina(p, numPages);
     }
-  }, [page, numPages, onPosition]);
+  }, [page, numPages, onPosition, onPagina]);
 
   useEffect(() => {
     if (jumpTo?.format === 'pdf') setPage(jumpTo.page);
