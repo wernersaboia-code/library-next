@@ -36,6 +36,47 @@ const ROTULO_TEMA: Record<Tema, string> = {
   escuro: 'Escuro',
 };
 
+/**
+ * Aplica tema, fonte e altura de linha ao conteúdo do EPUB.
+ *
+ * O tema no epubjs é uma folha de estilo por tema (`<style
+ * id="epubjs-inserted-css-<tema>">`) e as regras vão SEM prefixo de seletor
+ * (`body{background:…}`). Entre folhas assim, quem vence é a ordem delas no
+ * `<head>` — ou seja, a ordem em que os temas foram CRIADOS, não a da última
+ * escolha. Dá nisso: escolhido o escuro, a folha dele fica depois da do claro
+ * para sempre, e voltar ao claro não muda nada (o `select` responde, o texto
+ * continua escuro). Tirando do documento as folhas dos outros temas, sobra só a
+ * do escolhido e o ciclo volta a funcionar. Conferido com o epubjs de verdade:
+ * o fundo do conteúdo volta a #ffffff / #f4ecd8 / #1a1a1a a cada troca, em
+ * qualquer ordem.
+ *
+ * (A troca de seção não precisa de nada disso: o epubjs cria uma view nova e
+ * injeta só o tema escolhido — medido, ele não guarda seção antiga com folha
+ * velha.)
+ */
+function aplicarTema(
+  rendition: import('epubjs').Rendition,
+  tema: Tema,
+  fonte: number,
+  altura: number
+) {
+  rendition.themes.select(tema);
+  rendition.themes.fontSize(`${fonte}%`);
+  rendition.themes.override('line-height', String(altura));
+
+  // Os tipos do epubjs dizem que `getContents()` devolve um `Contents`, mas em
+  // execução é uma lista (uma por view renderizada) — daí a checagem.
+  const conteudos = rendition.getContents();
+  for (const conteudo of Array.isArray(conteudos) ? conteudos : [conteudos]) {
+    const doc = conteudo?.document;
+    if (!doc) continue;
+    for (const outro of Object.keys(TEMAS)) {
+      if (outro === tema) continue;
+      doc.getElementById(`epubjs-inserted-css-${outro}`)?.remove();
+    }
+  }
+}
+
 const TEMA_STORAGE_KEY = 'leitor-tema';
 
 // Tamanho de fonte (EPUB) / zoom (PDF), em %. O mesmo controle serve aos dois.
@@ -1093,9 +1134,7 @@ function EpubView({
             a: { color: t.texto },
           });
         }
-        rendition.themes.select(temaRef.current);
-        rendition.themes.fontSize(`${fonteRef.current}%`);
-        rendition.themes.override('line-height', String(alturaRef.current));
+        aplicarTema(rendition, temaRef.current, fonteRef.current, alturaRef.current);
 
         // O epubjs precisa das dimensões resolvidas para paginar. O container
         // é flex e pode ganhar tamanho depois do primeiro paint; re-resiza no
@@ -1156,9 +1195,7 @@ function EpubView({
   useEffect(() => {
     const r = renditionRef.current;
     if (!r) return;
-    r.themes.select(tema);
-    r.themes.fontSize(`${fonte}%`);
-    r.themes.override('line-height', String(altura));
+    aplicarTema(r, tema, fonte, altura);
   }, [tema, fonte, altura]);
 
   useEffect(() => {
