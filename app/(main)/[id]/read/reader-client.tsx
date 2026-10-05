@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
 import type { Bookmark } from '@/lib/db/bookmarks';
 import { lerLivro, salvarLivro, pedirPersistencia } from '@/lib/offline/books';
+import { direcaoDaVirada, type PontoDoToque } from '@/lib/gesto-pagina';
 import { cn } from '@/lib/utils';
 import { useOffline } from '@/components/offline-provider';
 
@@ -558,21 +559,32 @@ export function ReaderClient({
   const [traduzindo, setTraduzindo] = useState(false);
   const [erroTraducao, setErroTraducao] = useState<string | null>(null);
 
+  // O popup de Traduzir/Destacar precisa do texto selecionado e do lugar dele
+  // na tela. No EPUB o texto está dentro do iframe do livro e quem chama isto é
+  // o EpubView; no PDF (e no resto) a seleção é do próprio documento.
+  const mostrarSelecao = useCallback((texto: string, x: number | null, y: number | null) => {
+    const limpo = texto.trim();
+    if (!limpo || limpo.length > 5000) {
+      setSelecao(null);
+      return;
+    }
+    setSelecao({
+      texto: limpo,
+      x: x ?? window.innerWidth / 2,
+      y: y ?? window.innerHeight - 80,
+    });
+  }, []);
+
   useEffect(() => {
     function capturar() {
       const sel = window.getSelection();
-      const texto = sel?.toString().trim() ?? '';
-      if (!texto || texto.length > 5000) {
-        setSelecao(null);
-        return;
-      }
-      const range = sel?.getRangeAt(0);
-      const rect = range?.getBoundingClientRect();
-      setSelecao({
-        texto,
-        x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
-        y: rect ? rect.top : window.innerHeight - 80,
-      });
+      const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+      const rect = range?.getBoundingClientRect() ?? null;
+      mostrarSelecao(
+        sel?.toString() ?? '',
+        rect ? rect.left + rect.width / 2 : null,
+        rect ? rect.top : null
+      );
     }
     document.addEventListener('mouseup', capturar);
     document.addEventListener('touchend', capturar);
@@ -580,7 +592,7 @@ export function ReaderClient({
       document.removeEventListener('mouseup', capturar);
       document.removeEventListener('touchend', capturar);
     };
-  }, []);
+  }, [mostrarSelecao]);
 
   async function traduzir() {
     if (!selecao) return;
@@ -809,6 +821,7 @@ export function ReaderClient({
               fonte={fonte}
               altura={altura}
               onPosition={registrarPosicao}
+              onSelecao={mostrarSelecao}
             />
           )}
           {info.format === 'pdf' && (
@@ -967,7 +980,7 @@ export function ReaderClient({
 type OnPosition = (percentual: number, locator: Locator) => void;
 
 function EpubView({
-  source, initialCfi, jumpTo, jumpPercent, tema, fonte, altura, onPosition,
+  source, initialCfi, jumpTo, jumpPercent, tema, fonte, altura, onPosition, onSelecao,
 }: {
   source: string | ArrayBuffer;
   initialCfi: string | null;
@@ -977,13 +990,17 @@ function EpubView({
   fonte: number;
   altura: number;
   onPosition: OnPosition;
+  onSelecao: (texto: string, x: number | null, y: number | null) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const gestoRef = useRef<PontoDoToque | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const renditionRef = useRef<import('epubjs').Rendition | null>(null);
   const livroRef = useRef<import('epubjs').Book | null>(null);
   const onPositionRef = useRef(onPosition);
   onPositionRef.current = onPosition;
+  const onSelecaoRef = useRef(onSelecao);
+  onSelecaoRef.current = onSelecao;
   const initialCfiRef = useRef(initialCfi);
   initialCfiRef.current = initialCfi;
   const temaRef = useRef(tema);
@@ -1014,6 +1031,59 @@ function EpubView({
         });
         renditionRef.current = rendition;
         await rendition.display(initialCfiRef.current ?? undefined);
+
+        // Virar página com o dedo. O epubjs no modo paginado não traz gesto
+        // nenhum, mas repassa os toques de dentro do iframe do livro para a
+        // rendition (`passEvents`) — é por aqui que o arrasto chega. Quem
+        // decide se o arrasto é virada (e quando ele é rolagem, seleção ou o
+        // "voltar" do navegador) é `direcaoDaVirada`.
+        rendition.on('touchstart', (ev: TouchEvent) => {
+          const toque = ev.changedTouches[0];
+          if (toque) gestoRef.current = { x: toque.clientX, y: toque.clientY, ms: Date.now() };
+        });
+        rendition.on('touchend', (ev: TouchEvent, contents: import('epubjs').Contents) => {
+          const toque = ev.changedTouches[0];
+          const inicio = gestoRef.current;
+          gestoRef.current = null; // um toque, uma virada
+          if (!toque) return;
+          const selecao = contents?.window?.getSelection?.();
+          const direcao = direcaoDaVirada(
+            inicio,
+            { x: toque.clientX, y: toque.clientY, ms: Date.now() },
+            {
+              temSelecao: Boolean(selecao && selecao.toString().trim()),
+              ampliado: (window.visualViewport?.scale ?? 1) > 1.01,
+            }
+          );
+          if (direcao === 'proxima') void rendition.next();
+          else if (direcao === 'anterior') void rendition.prev();
+        });
+
+        // Seleção de texto. No EPUB o texto vive dentro do iframe, então nem o
+        // `mouseup`/`touchend` do documento de fora nem o `getSelection()` dele
+        // enxergam a seleção — era por isso que o popup de Traduzir/Destacar
+        // nunca aparecia aqui (no PDF, que não tem iframe, aparecia). O epubjs
+        // repassa estes eventos do iframe para a rendition (o mesmo canal do
+        // gesto de virar página acima); o retângulo vem em coordenadas de
+        // dentro do iframe e é deslocado para onde o iframe está na tela.
+        function capturarSelecao(contents: import('epubjs').Contents) {
+          const janela = contents?.window;
+          if (!janela) return;
+          const selecao = janela.getSelection();
+          const texto = selecao?.toString() ?? '';
+          const quadro = contents.document?.defaultView?.frameElement as HTMLElement | null;
+          const base = quadro?.getBoundingClientRect() ?? null;
+          let x: number | null = null;
+          let y: number | null = null;
+          if (selecao && selecao.rangeCount > 0) {
+            const retangulo = selecao.getRangeAt(0).getBoundingClientRect();
+            x = (base?.left ?? 0) + retangulo.left + retangulo.width / 2;
+            y = (base?.top ?? 0) + retangulo.top;
+          }
+          onSelecaoRef.current(texto, x, y);
+        }
+        rendition.on('mouseup', (_ev: MouseEvent, contents: import('epubjs').Contents) => capturarSelecao(contents));
+        rendition.on('touchend', (_ev: TouchEvent, contents: import('epubjs').Contents) => capturarSelecao(contents));
 
         // Tema do leitor dentro do iframe do EPUB (o CSS do livro não vem
         // com fundo/texto próprios de forma confiável).
@@ -1128,7 +1198,7 @@ function EpubView({
         type="button"
         aria-label="Página anterior"
         onClick={() => void renditionRef.current?.prev()}
-        className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
+        className="setas-de-pagina absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
       >
         <ChevronLeftIcon className="h-5 w-5" aria-hidden />
       </button>
@@ -1136,7 +1206,7 @@ function EpubView({
         type="button"
         aria-label="Próxima página"
         onClick={() => void renditionRef.current?.next()}
-        className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
+        className="setas-de-pagina absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-card/80 p-2 text-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:bg-accent"
       >
         <ChevronRightIcon className="h-5 w-5" aria-hidden />
       </button>
@@ -1177,6 +1247,54 @@ function PdfView({
     if (jumpTo?.format === 'pdf') setPage(jumpTo.page);
   }, [jumpTo]);
 
+  // Virar página com o dedo — mesma regra do EPUB (`lib/gesto-pagina.ts`). Aqui
+  // o toque chega direto, sem iframe. O container rola na vertical, e o gesto
+  // só age quando o arrasto é claramente horizontal.
+  const areaRef = useRef<HTMLDivElement>(null);
+  const gestoRef = useRef<PontoDoToque | null>(null);
+
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+
+    function aoIniciar(ev: TouchEvent) {
+      const area = areaRef.current;
+      const toque = ev.changedTouches[0];
+      if (!area || !toque) return;
+      // Página mais larga que a tela: o arrasto horizontal é rolagem da página.
+      if (area.scrollWidth > area.clientWidth + 2) {
+        gestoRef.current = null;
+        return;
+      }
+      gestoRef.current = { x: toque.clientX, y: toque.clientY, ms: Date.now() };
+    }
+
+    function aoTerminar(ev: TouchEvent) {
+      const toque = ev.changedTouches[0];
+      const inicio = gestoRef.current;
+      gestoRef.current = null; // um toque, uma virada
+      if (!toque) return;
+      const selecao = window.getSelection();
+      const direcao = direcaoDaVirada(
+        inicio,
+        { x: toque.clientX, y: toque.clientY, ms: Date.now() },
+        {
+          temSelecao: Boolean(selecao && selecao.toString().trim()),
+          ampliado: (window.visualViewport?.scale ?? 1) > 1.01,
+        }
+      );
+      if (direcao === 'proxima') setPage((p) => (numPages ? Math.min(numPages, p + 1) : p + 1));
+      else if (direcao === 'anterior') setPage((p) => Math.max(1, p - 1));
+    }
+
+    el.addEventListener('touchstart', aoIniciar, { passive: true });
+    el.addEventListener('touchend', aoTerminar, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', aoIniciar);
+      el.removeEventListener('touchend', aoTerminar);
+    };
+  }, [numPages]);
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-center gap-3 border-b border-border px-4 py-2 text-sm">
@@ -1201,7 +1319,7 @@ function PdfView({
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div ref={areaRef} className="flex-1 overflow-auto">
         <PdfInner
           src={source}
           page={page}

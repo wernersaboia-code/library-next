@@ -76,6 +76,18 @@
     display: none;
   }
 
+  /* Setas de página do leitor EPUB: só onde existe mouse ou trackpad. No
+     celular quem vira a página é o arrasto do dedo (ver lib/gesto-pagina.ts e
+     o leitor) — ali as setas só roubavam espaço do texto. */
+  .setas-de-pagina {
+    display: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .setas-de-pagina {
+      display: inline-flex;
+    }
+  }
+
   /* Tela cheia "da casa" — usada onde não existe a Fullscreen API de elemento,
      como no iPhone: o leitor cobre a viewport inteira em vez de só a área
      entre as barras do app. 100dvh acompanha a barra do Safari (que aparece e
