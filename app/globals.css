@@ -76,6 +76,19 @@
     display: none;
   }
 
+  /* Tela cheia "da casa" — usada onde não existe a Fullscreen API de elemento,
+     como no iPhone: o leitor cobre a viewport inteira em vez de só a área
+     entre as barras do app. 100dvh acompanha a barra do Safari (que aparece e
+     some ao rolar); 100vh fica de reserva em navegador antigo. z-index acima
+     do header fixo (z-10) e da barra de abas do celular (z-30). */
+  .tela-cheia-casa {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    height: 100vh;
+    height: 100dvh;
+  }
+
   /* Cards fora da área visível não precisam ser pintados antes da rolagem.
      O tamanho intrínseco evita saltos no layout enquanto entram na tela. */
   .content-auto {

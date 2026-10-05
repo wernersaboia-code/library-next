@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type FormEvent } from 'react';
 import type { DocumentProps, PageProps } from 'react-pdf';
 import Link from 'next/link';
-import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, XIcon, Loader2Icon, DownloadIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
 import type { Bookmark } from '@/lib/db/bookmarks';
 import { lerLivro, salvarLivro, pedirPersistencia } from '@/lib/offline/books';
+import { cn } from '@/lib/utils';
 import { useOffline } from '@/components/offline-provider';
 
 type FileInfo = {
@@ -84,6 +85,41 @@ function locatorDaUrl(): Locator | null {
 function rotuloDoLocator(locator: Locator, percentual: number | null): string {
   if (locator.format === 'pdf') return `Página ${locator.page}`;
   return percentual !== null ? `${Math.round(percentual)}%` : 'Marcador';
+}
+
+// ─── Tela cheia ──────────────────────────────────────────────
+// A Fullscreen API de elemento não existe em todo navegador de celular: no
+// iPhone (WebKit, em qualquer navegador) nenhum pedido faz um <div> ir para a
+// tela cheia, e nos WebKit até o iOS/iPadOS 16.3 ela só existia com prefixo
+// `webkit` (que o lib.dom não declara). Por isso o leitor tem dois caminhos:
+// o nativo, quando existe, e uma tela cheia da casa — o próprio leitor
+// cobrindo a viewport — quando não existe ou é recusado.
+type EstadoTelaCheia = 'nao' | 'nativa' | 'casa';
+
+type DocumentoTelaCheia = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+type ElementoTelaCheia = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+/** Elemento hoje em tela cheia nativa, considerando o prefixo do WebKit. */
+function emTelaCheiaNativa(): Element | null {
+  const d = document as DocumentoTelaCheia;
+  return d.fullscreenElement ?? d.webkitFullscreenElement ?? null;
+}
+
+/**
+ * O site está aberto como app instalado (Tela de Início)? No iPhone é a única
+ * forma de a página ocupar a tela toda: o Safari desenha a própria barra e
+ * nenhuma API a esconde.
+ */
+function emModoAplicativo(): boolean {
+  if (typeof window === 'undefined') return false;
+  const standalone = (window.navigator as Navigator & { standalone?: boolean }).standalone;
+  return standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true;
 }
 
 export function ReaderClient({
@@ -236,7 +272,12 @@ export function ReaderClient({
   // ─── Tema / tela cheia / ir para ─────────────────────────────
   const raizRef = useRef<HTMLDivElement>(null);
   const [tema, setTema] = useState<Tema>('claro');
-  const [telaCheia, setTelaCheia] = useState(false);
+  const [telaCheia, setTelaCheia] = useState<EstadoTelaCheia>('nao');
+  const [avisoTelaCheia, setAvisoTelaCheia] = useState<string | null>(null);
+  // Em tela cheia os controles saem de cena (é o que "tela cheia" quer dizer
+  // aqui) e voltam pelo botão flutuante.
+  const [controlesVisiveis, setControlesVisiveis] = useState(true);
+  const [dicaControles, setDicaControles] = useState<string | null>(null);
   const [pdfInfo, setPdfInfo] = useState<{ page: number; total: number } | null>(null);
   const [jumpPercent, setJumpPercent] = useState<{ valor: number } | null>(null);
   const [irParaValor, setIrParaValor] = useState('');
@@ -321,12 +362,50 @@ export function ReaderClient({
   }, []);
 
   useEffect(() => {
+    const d = document as DocumentoTelaCheia;
     function aoMudarTelaCheia() {
-      setTelaCheia(Boolean(document.fullscreenElement));
+      const nativa = Boolean(emTelaCheiaNativa());
+      // Sem tela cheia nativa o estado segue o da casa, se ela estiver ativa.
+      setTelaCheia((atual) => (nativa ? 'nativa' : atual === 'casa' ? 'casa' : 'nao'));
     }
-    document.addEventListener('fullscreenchange', aoMudarTelaCheia);
-    return () => document.removeEventListener('fullscreenchange', aoMudarTelaCheia);
+    // `webkitfullscreenchange` não está no lib.dom; o cast mantém o tipo do
+    // ouvinte e evita repetir a lógica de estado.
+    d.addEventListener('fullscreenchange', aoMudarTelaCheia);
+    d.addEventListener('webkitfullscreenchange', aoMudarTelaCheia);
+    return () => {
+      d.removeEventListener('fullscreenchange', aoMudarTelaCheia);
+      d.removeEventListener('webkitfullscreenchange', aoMudarTelaCheia);
+    };
   }, []);
+
+  // Na tela cheia da casa o leitor cobre a viewport, mas a página atrás
+  // continuaria rolando com o dedo: trava o scroll do body enquanto durar.
+  useEffect(() => {
+    if (telaCheia !== 'casa') return;
+    const anterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = anterior;
+    };
+  }, [telaCheia]);
+
+  // Entrar em tela cheia esconde os controles e deixa uma dica curta dizendo
+  // como trazê-los de volta; a dica some sozinha. Sair devolve tudo.
+  useEffect(() => {
+    if (telaCheia === 'nao') {
+      setControlesVisiveis(true);
+      setDicaControles(null);
+      return;
+    }
+    setControlesVisiveis(false);
+    setDicaControles('Controles ocultos — o botão no canto da tela os traz de volta.');
+    // As duas mensagens somem sozinhas: em tela cheia nada fica na tela.
+    const t = setTimeout(() => {
+      setDicaControles(null);
+      setAvisoTelaCheia(null);
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [telaCheia]);
 
   function ciclarTema() {
     const i = ORDEM_TEMAS.indexOf(tema);
@@ -334,12 +413,48 @@ export function ReaderClient({
   }
 
   async function alternarTelaCheia() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await raizRef.current?.requestFullscreen();
-    } catch {
-      // O navegador pode recusar (ex.: sem permissão de gesto); sem efeito.
+    setAvisoTelaCheia(null);
+    const d = document as DocumentoTelaCheia;
+
+    if (telaCheia === 'casa') {
+      setTelaCheia('nao');
+      return;
     }
+
+    if (emTelaCheiaNativa()) {
+      try {
+        if (d.exitFullscreen) await d.exitFullscreen();
+        else await d.webkitExitFullscreen?.();
+      } catch {
+        // Sem saída pela API, resta o botão que o próprio navegador mostra.
+      }
+      setTelaCheia('nao');
+      return;
+    }
+
+    const raiz = raizRef.current as ElementoTelaCheia | null;
+    const pedir = raiz?.requestFullscreen?.bind(raiz) ?? raiz?.webkitRequestFullscreen?.bind(raiz);
+    if (pedir) {
+      try {
+        await pedir();
+        return; // o evento fullscreenchange confirma o estado
+      } catch {
+        // Recusado (gesto, política, contexto): cai na tela cheia da casa.
+      }
+    }
+
+    // Sem Fullscreen API (iPhone e WebKit antigos) ou com o pedido recusado:
+    // o leitor ocupa a tela. É o mais perto de tela cheia que uma página comum
+    // consegue chegar ali — não esconde a barra do navegador; instalado na
+    // Tela de Início (PWA), sim.
+    setTelaCheia('casa');
+    setAvisoTelaCheia(
+      pedir
+        ? 'O navegador recusou a tela cheia nativa — o leitor ocupou a tela toda.'
+        : emModoAplicativo()
+          ? 'O leitor ocupou a tela toda.'
+          : 'O iPhone não abre tela cheia nativa para páginas — o leitor ocupou a tela toda. Para a tela cheia de verdade, sem a barra do Safari, adicione o site à Tela de Início: Compartilhar → Adicionar à Tela de Início.'
+    );
   }
 
   function irParaPosicao(e: FormEvent) {
@@ -517,9 +632,19 @@ export function ReaderClient({
     }
   }
 
+  const emTelaCheia = telaCheia !== 'nao';
+  const mostrarControles = !emTelaCheia || controlesVisiveis;
+
   return (
-    <div ref={raizRef} className="relative flex h-full flex-col bg-card">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-2">
+    <div
+      ref={raizRef}
+      // Em tela cheia da casa o `relative` sai de cena: `position` ficaria
+      // disputando com a classe `.tela-cheia-casa` e quem vencesse dependeria
+      // da ordem do CSS. Como `fixed` também é bloco de contenção dos filhos
+      // absolutos (o painel de marcadores), nada se perde.
+      className={cn('flex flex-col bg-card', telaCheia === 'casa' ? 'tela-cheia-casa' : 'relative h-full')}
+    >
+      <div className={cn('flex items-center gap-3 border-b border-border px-4 py-2', !mostrarControles && 'hidden')}>
         <Link
           href={`/${bookId}`}
           className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -560,7 +685,7 @@ export function ReaderClient({
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-1.5 text-xs text-muted-foreground">
+      <div className={cn('flex flex-wrap items-center gap-2 border-b border-border px-4 py-1.5 text-xs text-muted-foreground', !mostrarControles && 'hidden')}>
         <span className="tabular-nums" aria-live="polite">{posicaoTexto}</span>
 
         <form onSubmit={irParaPosicao} className="flex items-center gap-1">
@@ -638,14 +763,14 @@ export function ReaderClient({
             type="button"
             onClick={() => void alternarTelaCheia()}
             className="flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
-            title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
+            title={emTelaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
           >
-            {telaCheia ? (
+            {emTelaCheia ? (
               <Minimize2Icon className="h-3.5 w-3.5" aria-hidden />
             ) : (
               <Maximize2Icon className="h-3.5 w-3.5" aria-hidden />
             )}
-            <span>{telaCheia ? 'Sair' : 'Tela cheia'}</span>
+            <span>{emTelaCheia ? 'Sair' : 'Tela cheia'}</span>
           </button>
         </div>
       </div>
@@ -697,6 +822,42 @@ export function ReaderClient({
             />
           )}
         </div>
+      )}
+
+      {/* Avisos da tela cheia flutuam: em tela cheia nada pode roubar espaço da
+          leitura — e `pointer-events-none` deixa o texto por baixo utilizável
+          (selecionar, destacar) enquanto eles estão na tela. */}
+      {(avisoTelaCheia || dicaControles) && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-16 z-30 flex flex-col items-center gap-1 px-4">
+          {avisoTelaCheia && (
+            <p role="status" className="max-w-md rounded-lg bg-card/95 px-3 py-2 text-xs text-foreground shadow-lg ring-1 ring-border">
+              {avisoTelaCheia}
+            </p>
+          )}
+          {dicaControles && (
+            <p role="status" className="max-w-md rounded-lg bg-card/95 px-3 py-2 text-xs text-muted-foreground shadow-lg ring-1 ring-border">
+              {dicaControles}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Em tela cheia, o único controle sempre à mão: mostra e esconde as
+          barras do leitor. No canto para não competir com as setas de página. */}
+      {emTelaCheia && (
+        <button
+          type="button"
+          onClick={() => setControlesVisiveis((v) => !v)}
+          aria-label={controlesVisiveis ? 'Ocultar controles' : 'Mostrar controles'}
+          title={controlesVisiveis ? 'Ocultar controles' : 'Mostrar controles'}
+          className="absolute bottom-3 right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-card/85 text-foreground shadow-md ring-1 ring-border backdrop-blur-sm hover:bg-accent"
+        >
+          {controlesVisiveis ? (
+            <ChevronDownIcon className="h-4 w-4" aria-hidden />
+          ) : (
+            <ChevronUpIcon className="h-4 w-4" aria-hidden />
+          )}
+        </button>
       )}
 
       {painel && (
