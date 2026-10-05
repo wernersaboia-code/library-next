@@ -25,6 +25,13 @@ import { sanitizeDescription } from '@/lib/description';
 import { fetchCollections } from '@/lib/db/collections';
 import { fetchNotes } from '@/lib/db/notes';
 import { fetchBookmarks } from '@/lib/db/bookmarks';
+import { TAMANHO_MAXIMO_PADRAO } from '@/lib/arquivo-do-livro';
+
+// Mesmo teto do comando local e da rota de envio: a tela recusa o arquivo antes
+// de subir 20 MB de dados móveis, e a rota recusa de novo.
+const TAMANHO_MAXIMO_ARQUIVO = Number(
+  process.env.BOOK_FILE_MAX_BYTES ?? TAMANHO_MAXIMO_PADRAO
+);
 
 const LANGUAGES = [
   { value: 'en', label: 'Inglês' },
@@ -149,6 +156,7 @@ export default async function Page(
               hasFile: book.has_file,
               canPrepare: book.source === 'calibre' && book.owned,
             }}
+            tamanhoMaximo={TAMANHO_MAXIMO_ARQUIVO}
           />
 
           <TrackingControls

@@ -109,6 +109,50 @@ export async function uploadBookFile(
   return path;
 }
 
+/**
+ * URL de upload assinada para o arquivo de um livro escolhido no aparelho.
+ *
+ * O navegador sobe os bytes DIRETO ao Storage: um EPUB/PDF de 20 MB não passa
+ * pelo corpo de uma função da Vercel (limite prático de ~4,5 MB). A URL vale 2
+ * horas e já carrega o token de autorização.
+ */
+export async function createSignedBookUpload(
+  userId: string,
+  bookId: number,
+  ext: 'epub' | 'pdf'
+): Promise<{ path: string; signedUrl: string }> {
+  const path = bookFilePath(userId, bookId, ext);
+  const bucket = client().storage.from(BOOK_FILES_BUCKET);
+  const { data, error } = await bucket.createSignedUploadUrl(path);
+  if (error || !data?.signedUrl) {
+    throw new Error(`Falha ao preparar o envio: ${error?.message ?? 'sem URL assinada'}`);
+  }
+  return { path, signedUrl: data.signedUrl };
+}
+
+/**
+ * Tamanho real do objeto no Storage, ou null se ele não estiver lá. É a
+ * conferência do servidor depois do envio direto: sem ela, um envio que falhou
+ * no meio viraria um livro "pronto para leitura" sem arquivo nenhum.
+ */
+export async function tamanhoDoObjeto(
+  bucketName: string,
+  path: string
+): Promise<number | null> {
+  const partes = path.split('/');
+  const nome = partes.pop() ?? '';
+  const pasta = partes.join('/');
+  const bucket = client().storage.from(bucketName);
+  const { data, error } = await bucket.list(pasta, { limit: 100 });
+  if (error) {
+    throw new Error(`Falha ao conferir ${bucketName}/${path}: ${error.message}`);
+  }
+  const item = (data ?? []).find((i) => i.name === nome);
+  if (!item) return null;
+  const metadata = item.metadata as { size?: number } | null;
+  return Number(metadata?.size ?? 0);
+}
+
 /** Signed URL temporária para um arquivo privado do bucket de livros. */
 export async function getSignedBookUrl(
   storagePath: string,
