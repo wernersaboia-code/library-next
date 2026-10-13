@@ -1,36 +1,16 @@
 'use client';
 
-import Form from 'next/form';
-import { useFormStatus } from 'react-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
+import { LoaderCircleIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
 } from '@/components/ui/pagination';
-import { SearchParams } from '@/lib/url-state';
-
-function FormValues({
-  searchParams,
-  pageNumber,
-}: {
-  searchParams: SearchParams;
-  pageNumber: number;
-}) {
-  const { pending } = useFormStatus();
-
-  return (
-    <div data-pending={pending ? '' : undefined}>
-      {Object.entries(searchParams).map(
-        ([key, value]) =>
-          key !== 'page' && (
-            <input key={key} type="hidden" name={key} value={value as string} />
-          )
-      )}
-      <input type="hidden" name="page" value={pageNumber.toString()} />
-    </div>
-  );
-}
+import { hrefDaPagina, paginaValida, type SearchParams } from '@/lib/url-state';
 
 export function BookPagination({
   currentPage,
@@ -43,86 +23,96 @@ export function BookPagination({
   totalResults: number;
   searchParams: SearchParams;
 }) {
-  if (totalPages <= 1) {
-    return null;
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [destino, setDestino] = useState(currentPage);
+
+  if (totalPages <= 1) return null;
+
+  function navegar(pagina: number) {
+    if (pending || pagina === currentPage) return;
+    setDestino(pagina);
+    startTransition(() => {
+      router.push(hrefDaPagina(searchParams, pagina));
+    });
+  }
+
+  function seta(pagina: number, label: string, simbolo: string, disabled: boolean) {
+    if (disabled) {
+      return <Button variant="ghost" size="icon" disabled aria-label={label}>{simbolo}</Button>;
+    }
+    return (
+      <Button variant="ghost" size="icon" asChild>
+        <Link
+          href={hrefDaPagina(searchParams, pagina)}
+          prefetch
+          aria-label={label}
+          aria-disabled={pending || undefined}
+          className={pending ? 'pointer-events-none opacity-50' : undefined}
+          onNavigate={(event) => {
+            event.preventDefault();
+            navegar(pagina);
+          }}
+        >
+          {simbolo}
+        </Link>
+      </Button>
+    );
   }
 
   return (
-    <Pagination>
-      <PaginationContent className="flex items-center justify-between">
-        <PaginationItem>
-          <Form action="/">
-            <FormValues
-              searchParams={searchParams}
-              pageNumber={Math.max(1, currentPage - 1)}
-            />
-            <Button
-              variant="ghost"
-              type="submit"
-              size="icon"
-              disabled={currentPage <= 1}
-            >
-              ←
-            </Button>
-          </Form>
-        </PaginationItem>
+    <div data-pending={pending ? '' : undefined}>
+      <Pagination aria-label="Páginas do acervo" aria-busy={pending}>
+        <PaginationContent className="flex w-full items-center justify-between">
+          <PaginationItem>
+            {seta(currentPage - 1, 'Página anterior', '←', currentPage <= 1)}
+          </PaginationItem>
 
-        {/* Não reutilizamos FormValues aqui: ele grava um `page` escondido,
-            que colidiria com o campo visível — dois inputs de mesmo nome
-            enviam os dois valores, e o servidor leria o errado. */}
-        <Form action="/" className="flex flex-wrap items-center justify-center gap-2">
-          {Object.entries(searchParams).map(
-            ([key, value]) =>
-              key !== 'page' && (
-                <input key={key} type="hidden" name={key} value={value as string} />
-              )
-          )}
-          {/* Locale explícito: `toLocaleString()` sem argumento usa o locale
-              do ambiente, que difere entre servidor (Node) e navegador —
-              "1,609" contra "1.609". Texto divergente na hidratação derruba a
-              árvore do React (erro #418) e a página para de responder até o
-              refresh. */}
-          <span className="text-sm text-muted-foreground">
-            {totalResults.toLocaleString('pt-BR')} resultados · página
-          </span>
-          <label htmlFor="ir-para-pagina" className="sr-only">
-            Ir para a página
-          </label>
-          <input
-            id="ir-para-pagina"
-            name="page"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={totalPages}
-            defaultValue={currentPage}
-            className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm"
-          />
-          <span className="text-sm text-muted-foreground">
-            de {totalPages.toLocaleString('pt-BR')}
-          </span>
-          <Button type="submit" variant="outline" size="sm">
-            Ir
-          </Button>
-        </Form>
-
-        <PaginationItem>
-          <Form action="/">
-            <FormValues
-              searchParams={searchParams}
-              pageNumber={Math.min(totalPages, currentPage + 1)}
-            />
-            <Button
-              variant="ghost"
-              type="submit"
-              size="icon"
-              disabled={currentPage >= totalPages}
+          <PaginationItem>
+            <form
+              action="/"
+              method="get"
+              className="flex flex-wrap items-center justify-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const entrada = new FormData(event.currentTarget).get('page');
+                navegar(paginaValida(entrada, totalPages));
+              }}
             >
-              →
-            </Button>
-          </Form>
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+              {Object.entries(searchParams).map(([key, value]) =>
+                key !== 'page' && value !== undefined
+                  ? <input key={key} type="hidden" name={key} value={value} />
+                  : null
+              )}
+              <span className="text-sm text-muted-foreground">
+                {totalResults.toLocaleString('pt-BR')} resultados · página
+              </span>
+              <label htmlFor="ir-para-pagina" className="sr-only">Ir para a página</label>
+              <input
+                key={currentPage}
+                id="ir-para-pagina"
+                name="page"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={totalPages}
+                defaultValue={currentPage}
+                disabled={pending}
+                className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm disabled:opacity-50"
+              />
+              <span className="text-sm text-muted-foreground">de {totalPages.toLocaleString('pt-BR')}</span>
+              <Button type="submit" variant="outline" size="sm" disabled={pending}>Ir</Button>
+            </form>
+          </PaginationItem>
+
+          <PaginationItem>
+            {seta(currentPage + 1, 'Próxima página', '→', currentPage >= totalPages)}
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+      <p role="status" className="mt-1 flex min-h-4 items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        {pending && <><LoaderCircleIcon className="h-3 w-3 animate-spin" aria-hidden />Carregando página {destino.toLocaleString('pt-BR')}…</>}
+      </p>
+    </div>
   );
 }

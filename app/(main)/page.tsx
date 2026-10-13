@@ -53,7 +53,7 @@ export default async function Page(
         });
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="group flex h-full flex-col">
       {/* O painel vem do servidor, junto com a grade: antes ele buscava
           /api/reading/stats no cliente e só aparecia depois da hidratação
           mais um round-trip. */}

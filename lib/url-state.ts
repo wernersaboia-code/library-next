@@ -72,3 +72,11 @@ export function paginaValida(entrada: unknown, totalPaginas: number): number {
   if (!Number.isInteger(n) || n < 1) return 1;
   return Math.min(n, ultima);
 }
+
+/** URL completa para pré-carregar/navegar sem perder os filtros atuais. */
+export function hrefDaPagina(params: SearchParams, pagina: number): string {
+  return `/?${stringifySearchParams({
+    ...params,
+    page: String(paginaValida(pagina, Number.MAX_SAFE_INTEGER)),
+  })}`;
+}

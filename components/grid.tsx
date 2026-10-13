@@ -227,9 +227,10 @@ export function BooksGrid({
               );
             }
 
+            const href = `/${book.id}?${stringifySearchParams(searchParams)}`;
             return (
               <Link
-                href={`/${book.id}?${stringifySearchParams(searchParams)}`}
+                href={href}
                 key={book.id}
                 draggable
                 onDragStart={(e) =>
@@ -239,10 +240,11 @@ export function BooksGrid({
                   })
                 }
                 className="content-auto block cursor-grab rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing md:hover:scale-[1.02]"
-                // Sempre pré-carrega (default): a página do livro é dinâmica,
-                // e o payload pré-carregado cobre a transição com o loading
-                // em vez de esperar o round-trip começar do zero no clique.
-                prefetch
+                // O prefetch automático traz o loading, sem buscar a ficha
+                // completa de todas as capas visíveis. Os dados vêm quando
+                // há intenção de abrir um livro: hover ou foco do teclado.
+                onMouseEnter={() => router.prefetch(href)}
+                onFocus={() => router.prefetch(href)}
               >
                 {capa}
                 {legenda}
