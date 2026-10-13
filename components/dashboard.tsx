@@ -5,131 +5,121 @@ import {
   BookXIcon,
 } from 'lucide-react';
 import type { ReadingStats } from '@/lib/db/queries';
+import { ReadingHistory } from './reading-history';
+import { ReadingYearBars } from './reading-year-bars';
 
 export default function Dashboard({ stats }: { stats: ReadingStats }) {
   const cards = [
     {
-      label: 'Total',
+      label: 'Livros no acervo',
       value: stats.totalBooks,
       icon: LibraryIcon,
-      // Cores alinhadas ao tema (creme/âmbar) e às mesmas usadas nos selos
-      // da capa (CoverBadges): lendo=âmbar, lidos=esmeralda, abandonados=cinza.
-      // Antes eram azul/verde/roxo/cinza/laranja sem relação com o tema.
       color: 'text-primary bg-primary/10',
+      description: null,
     },
     {
-      label: 'Lendo',
+      label: 'Lendo agora',
       value: stats.lendo,
       icon: BookOpenIcon,
       color: 'text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/15',
+      description: null,
     },
     {
-      label: 'Lidos',
+      label: 'Livros concluídos',
       value: stats.lidos,
       icon: BookmarkIcon,
       color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/15',
+      description: null,
     },
     {
       label: 'Abandonados',
       value: stats.abandonados,
       icon: BookXIcon,
       color: 'text-muted-foreground bg-muted',
+      description: null,
     },
     {
-      label: 'Páginas',
+      label: 'Páginas lidas',
       value: stats.paginasLidas,
       icon: BookOpenIcon,
       color: 'text-primary bg-primary/10',
+      description: 'Somadas dos livros concluídos',
     },
   ];
 
   const anos = Object.entries(stats.porAno ?? {}).sort(
-    ([a], [b]) => Number(a) - Number(b)
+    ([a], [b]) => Number(b) - Number(a)
   );
-  const maxAno = Math.max(...anos.map(([, quantidade]) => quantidade), 1);
+  const periodos = [
+    { label: 'Este mês', ...stats.mes },
+    { label: 'Este ano', ...stats.ano },
+  ];
 
   return (
-    <div className="mb-6">
-      <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-5">
+    <section aria-label="Resumo do acervo e das leituras" className="mb-6">
+      <dl className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex min-w-24 shrink-0 flex-col items-center rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border md:min-w-0"
+            className="flex min-w-0 flex-col rounded-xl bg-card p-3 text-card-foreground ring-1 ring-border"
           >
-            <div className={`p-2 rounded-full mb-2 ${card.color}`}>
-              <card.icon className="w-5 h-5" />
-            </div>
-            <span className="text-2xl font-bold">{card.value}</span>
-            <span className="text-xs text-muted-foreground">
-              {card.label}
-            </span>
+            <dt className="order-2 mt-1 text-xs font-medium">{card.label}</dt>
+            <dd className="order-1 flex items-center justify-between gap-2">
+              <span className="text-xl font-bold tabular-nums">
+                {card.value.toLocaleString('pt-BR')}
+              </span>
+              <span className={`shrink-0 rounded-md p-1.5 ${card.color}`}>
+                <card.icon className="h-4 w-4" aria-hidden />
+              </span>
+            </dd>
+            {card.description && (
+              <dd className="order-3 mt-1 text-[11px] leading-4 text-muted-foreground">
+                {card.description}
+              </dd>
+            )}
           </div>
         ))}
-      </div>
+      </dl>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            Neste mês
-          </h3>
-          <p className="text-sm">
-            <span className="text-xl font-bold">{stats.mes.livros}</span>{' '}
-            {stats.mes.livros === 1 ? 'livro' : 'livros'} ·{' '}
-            {stats.mes.paginas.toLocaleString('pt-BR')} páginas
-          </p>
+      <div className={`grid grid-cols-1 gap-3 md:mt-3 ${anos.length > 0 ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]' : ''}`}>
+        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${anos.length > 0 ? 'lg:grid-cols-1' : ''}`}>
+          {periodos.map((periodo) => (
+            <div key={periodo.label} className="flex flex-col justify-center rounded-xl bg-card p-3.5 text-card-foreground ring-1 ring-border">
+              <h3 className="text-xs font-semibold text-muted-foreground">{periodo.label}</h3>
+              <p className="mt-1 text-sm">
+                <span className="text-xl font-bold tabular-nums">{periodo.livros.toLocaleString('pt-BR')}</span>{' '}
+                {periodo.livros === 1 ? 'livro concluído' : 'livros concluídos'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {periodo.paginas.toLocaleString('pt-BR')} páginas lidas
+              </p>
+            </div>
+          ))}
         </div>
-        <div className="rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            Neste ano
-          </h3>
-          <p className="text-sm">
-            <span className="text-xl font-bold">{stats.ano.livros}</span>{' '}
-            {stats.ano.livros === 1 ? 'livro' : 'livros'} ·{' '}
-            {stats.ano.paginas.toLocaleString('pt-BR')} páginas
-          </p>
-        </div>
-      </div>
 
-      {anos.length > 0 && (
-        <div className="mt-4 rounded-xl bg-card p-4 text-card-foreground shadow-sm ring-1 ring-border">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-3">
-            Lidos por ano
-          </h3>
-          {/* Barras horizontais, uma por ano: com colunas verticais muitos
-              anos viravam um retângulo marrom sem informação. */}
-          <div className="space-y-2">
-            {anos.map(([ano, quantidade]) => (
-              <div key={ano} className="flex items-center gap-3">
-                <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                  {ano}
-                </span>
-                <div className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary/70"
-                    style={{ width: `${(quantidade / maxAno) * 100}%` }}
-                  />
-                </div>
-                <span className="w-8 shrink-0 text-xs font-medium tabular-nums text-foreground">
-                  {quantidade}
-                </span>
+        {anos.length > 0 && (
+          <div className="min-w-0 rounded-xl bg-card p-3.5 text-card-foreground ring-1 ring-border lg:h-[196px]">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <div>
+                <h3 className="text-sm font-semibold">Livros concluídos por ano</h3>
+                <p className="text-[11px] text-muted-foreground">Pela data de conclusão</p>
               </div>
-            ))}
+              {anos.length > 5 && <ReadingHistory anos={anos} />}
+            </div>
+            <ReadingYearBars anos={anos.slice(0, 5)} />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {stats.lidosSemData > 0 && (
-        // AD-2: sem esta linha, "Lidos: 4" ao lado de um gráfico por ano
-        // vazio parece defeito, quando é a consequência de não inventarmos
-        // datas para leituras antigas.
         <p className="mt-2 text-xs text-muted-foreground">
-          {stats.lidosSemData}{' '}
+          {stats.lidosSemData.toLocaleString('pt-BR')}{' '}
           {stats.lidosSemData === 1
-            ? 'lido sem data registrada'
-            : 'lidos sem data registrada'}
-          {' '}— não entram na contagem por período.
+            ? 'livro concluído sem data registrada'
+            : 'livros concluídos sem data registrada'}
+          {' '}— fora das contagens por período.
         </p>
       )}
-    </div>
+    </section>
   );
 }
