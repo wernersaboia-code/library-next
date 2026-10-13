@@ -6,9 +6,18 @@ allowBuilds:
   core-js: true
   es5-ext: true
   esbuild: true
+  unrs-resolver: true
+  better-sqlite3: false
+  bufferutil: false
+  utf-8-validate: false
 overrides:
   postcss: 8.5.28
   ws: 8.21.0
   esbuild: 0.25.0
   yaml: 2.8.3
   '@xmldom/xmldom': 0.8.15
+  browserslist: 4.28.9
+  'brace-expansion@>=5.0.0 <5.0.12': 5.0.12
+  source-map-js: 1.2.2
+  postcss-selector-parser: 7.1.6
+  sharp: 0.35.5
