@@ -15,8 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-geist-sans)', ...fontFamily.sans],
-        display: ['var(--font-fraunces)', 'Georgia', 'Cambria', 'serif'],
+        sans: ['var(--font-titillium)', ...fontFamily.sans],
+        display: ['var(--font-neuton)', 'Georgia', 'Cambria', 'serif'],
+        serif: ['var(--font-neuton)', ...fontFamily.serif],
       },
       colors: {
         border: 'hsl(var(--border))',

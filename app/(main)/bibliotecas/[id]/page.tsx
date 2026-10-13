@@ -4,6 +4,7 @@ import { ArrowLeftIcon, LibraryIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Photo } from '@/components/photo';
 import { BookCaption } from '@/components/book-caption';
+import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollection, fetchCollectionBooks } from '@/lib/db/collections';
@@ -22,9 +23,9 @@ export default async function BibliotecaPage(
   const livros = await fetchCollectionBooks(userId, collectionId);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" asChild>
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link href="/bibliotecas">
             <ArrowLeftIcon className="mr-2 h-4 w-4" /> Bibliotecas
           </Link>
@@ -37,12 +38,10 @@ export default async function BibliotecaPage(
         </Link>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{biblioteca.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {livros.length} {livros.length === 1 ? 'livro' : 'livros'}
-        </p>
-      </div>
+      <PageHeader
+        titulo={biblioteca.name}
+        descricao={`${livros.length} ${livros.length === 1 ? 'livro' : 'livros'}`}
+      />
 
       {livros.length === 0 ? (
         <EmptyState
@@ -51,12 +50,12 @@ export default async function BibliotecaPage(
           descricao="Use o modo de seleção no catálogo para adicionar vários de uma vez."
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {livros.map((livro, index) => (
             <Link
               key={livro.id}
               href={`/${livro.id}`}
-              className="block transition ease-in-out md:hover:scale-105"
+              className="block transition ease-in-out md:hover:scale-[1.02]"
             >
               <Photo
                 bookId={livro.id}

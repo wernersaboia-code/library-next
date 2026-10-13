@@ -10,6 +10,7 @@ import {
   ITEMS_PER_PAGE,
 } from '@/lib/db/queries';
 import { ReadingStrip } from '@/components/reading-strip';
+import { PageHeader } from '@/components/page-header';
 import { parseSearchParams, paginaValida } from '@/lib/url-state';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollections } from '@/lib/db/collections';
@@ -52,16 +53,11 @@ export default async function Page(
         });
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* O painel vem do servidor, junto com a grade: antes ele buscava
           /api/reading/stats no cliente e só aparecia depois da hidratação
           mais um round-trip. */}
-      <div className="px-4 pt-2 md:pt-4">
-        <p className="text-sm font-medium text-primary">Seu acervo</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
-          Biblioteca
-        </h1>
-      </div>
+      <PageHeader eyebrow="Seu acervo" titulo="Biblioteca" />
       <Dashboard stats={stats} />
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">

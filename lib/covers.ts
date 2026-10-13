@@ -1,7 +1,7 @@
 import 'server-only';
 import sharp from 'sharp';
 import * as ThumbHash from 'thumbhash';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { withUser } from '@/lib/db/with-user';
 import { books } from '@/lib/db/schema';
 import { uploadCover } from '@/lib/storage';
@@ -17,7 +17,54 @@ export const COVER_MAX_HEIGHT = 1200;
 export const COVER_JPEG_QUALITY = 80;
 
 const OPENLIBRARY_COVER_HOST = 'https://covers.openlibrary.org';
+const GOOGLE_BOOKS_COVER_HOST = 'https://books.google.com';
 
+export type CoverProvider = 'openlibrary' | 'googlebooks';
+
+export function isCoverProvider(value: unknown): value is CoverProvider {
+  return value === 'openlibrary' || value === 'googlebooks';
+}
+
+/**
+ * Monta a URL da capa a partir de uma referência (provedor + id). O host é
+ * fixo por provedor e o id vem de uma busca server-side — o cliente só manda
+ * a referência, nunca a URL (AD-7). Baixar URL do cliente seria SSRF.
+ */
+export function buildCoverUrl(provider: CoverProvider, id: string): string {
+  if (provider === 'openlibrary') {
+    return `${OPENLIBRARY_COVER_HOST}/b/id/${encodeURIComponent(id)}-L.jpg`;
+  }
+  return `${GOOGLE_BOOKS_COVER_HOST}/books/content?id=${encodeURIComponent(
+    id
+  )}&printsec=frontcover&img=1&zoom=2`;
+}
+
+export async function fetchCoverFromProvider(
+  provider: CoverProvider,
+  id: string
+): Promise<Buffer> {
+  const url = buildCoverUrl(provider, id);
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(20000),
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`Capa indisponível (${res.status})`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/**
+ * O host é fixo e o id é numérico: o cliente nunca fornece a URL (AD-7).
+ * Aceitar endereço do cliente aqui seria SSRF.
+ */
+export async function fetchOpenLibraryCover(coverId: number): Promise<Buffer> {
+  const url = `${OPENLIBRARY_COVER_HOST}/b/id/${coverId}-L.jpg`;
+  // A rota completa de capa levou 11 741 ms na medição de 2026-08-19, contra
+  // o limite anterior de 10 s — por isso nenhum dos livros vindos da busca
+  // tinha capa. 20 s dá ~1,7x a chamada observada.
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`Capa indisponível (${res.status})`);
+  return Buffer.from(await res.arrayBuffer());
+}
 /**
  * Redimensiona e recomprime uma capa. Se o buffer não for uma imagem
  * decodificável, devolve-o intacto (melhor guardar algo do que derrubar o
@@ -62,20 +109,6 @@ export async function applyCoverFromBuffer(
   const imageUrl = await uploadCover(userId, bookId, normalizada, ext);
   await withUser(userId, (tx) =>
     tx.update(books).set({ image_url: imageUrl, thumbhash })
-      .where(eq(books.id, bookId)));
+      .where(and(eq(books.id, bookId), eq(books.userId, userId))));
   return imageUrl;
-}
-
-/**
- * O host é fixo e o id é numérico: o cliente nunca fornece a URL (AD-7).
- * Aceitar endereço do cliente aqui seria SSRF.
- */
-export async function fetchOpenLibraryCover(coverId: number): Promise<Buffer> {
-  const url = `${OPENLIBRARY_COVER_HOST}/b/id/${coverId}-L.jpg`;
-  // A rota completa de capa levou 11 741 ms na medição de 2026-08-19, contra
-  // o limite anterior de 10 s — por isso nenhum dos livros vindos da busca
-  // tinha capa. 20 s dá ~1,7x a chamada observada.
-  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-  if (!res.ok) throw new Error(`Capa indisponível (${res.status})`);
-  return Buffer.from(await res.arrayBuffer());
 }

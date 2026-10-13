@@ -26,6 +26,7 @@ import { fetchCollections } from '@/lib/db/collections';
 import { fetchNotes } from '@/lib/db/notes';
 import { fetchBookmarks } from '@/lib/db/bookmarks';
 import { TAMANHO_MAXIMO_PADRAO } from '@/lib/arquivo-do-livro';
+import { authorHref, browseReturnHref, seriesHref } from '@/lib/catalog-browse';
 
 // Mesmo teto do comando local e da rota de envio: a tela recusa o arquivo antes
 // de subir 20 MB de dados móveis, e a rota recusa de novo.
@@ -53,10 +54,12 @@ function getLanguageLabel(code: string | null): string {
 export default async function Page(
   props: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<SearchParams>;
+    searchParams: Promise<SearchParams & { from?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
+  const { from, ...catalogParams } = searchParams;
+  const returnHref = browseReturnHref(from) ?? `/?${stringifySearchParams(catalogParams)}`;
   const params = await props.params;
   const userId = await getCurrentUserId();
   const bookId = Number(params.id);
@@ -75,139 +78,157 @@ export default async function Page(
   if (!book) notFound();
 
   return (
-    <ScrollArea className="h-full px-4">
-      <div className="mx-auto max-w-6xl pb-8">
-      <div className="mb-4 flex items-center justify-between">
-        <Button variant="ghost" asChild>
-          <Link href={`/?${stringifySearchParams(searchParams)}`}>
-            <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
-          </Link>
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-6 md:flex-row md:gap-8">
-        <div className="mx-auto w-2/3 max-w-xs md:mx-0 md:w-1/4 md:shrink-0">
-          <Photo
-            bookId={book.id}
-            src={book.image_url}
-            title={book.title}
-            thumbhash={book.thumbhash}
-            priority={true}
-            readStatus={book.read_status}
-            myRating={book.my_rating}
-          />
+    <ScrollArea className="h-full">
+      <div className="mx-auto max-w-5xl px-1 pb-10">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link href={returnHref}>
+              <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
+            </Link>
+          </Button>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <h1 className="mb-2 font-display text-2xl font-semibold tracking-tight md:text-3xl">
-            {book.title}
-          </h1>
-          <OriginalTitleEditor bookId={book.id} inicial={book.original_title} />
-          {book.authors.length > 0 && (
-            <p className="mb-4 text-lg text-muted-foreground md:text-xl">
-              {book.authors.join(', ')}
-            </p>
-          )}
+        <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+          <div className="mx-auto w-40 shrink-0 sm:mx-0 sm:w-48">
+            <Photo
+              bookId={book.id}
+              src={book.image_url}
+              title={book.title}
+              thumbhash={book.thumbhash}
+              priority={true}
+              readStatus={book.read_status}
+              myRating={book.my_rating}
+            />
+          </div>
 
-          {book.series && (
-            <p className="flex items-center text-sm text-muted-foreground mb-4">
-              <LayersIcon className="w-4 h-4 mr-2" />
-              Série: {book.series}
-              {book.series_index !== null &&
-                `, volume ${book.series_index.toLocaleString('pt-BR')}`}
-            </p>
-          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl">
+              {book.title}
+            </h1>
+            <OriginalTitleEditor bookId={book.id} inicial={book.original_title} />
+            {book.authors.length > 0 && (
+              <p className="mt-2 text-lg text-muted-foreground">
+                {book.authorLinks.map((author, index) => <span key={author.id}>
+                  {index > 0 && ', '}
+                  <Link href={authorHref(author.id)} className="underline-offset-4 hover:underline">{author.name}</Link>
+                </span>)}
+              </p>
+            )}
 
-          <BookCollections
-            bookId={book.id}
-            atuais={book.collections}
-            todas={bibliotecas.map((b) => ({ id: b.id, name: b.name }))}
-          />
+            {book.series?.trim() && (
+              <p className="mt-2 flex items-center text-sm text-muted-foreground">
+                <LayersIcon className="mr-2 h-4 w-4" aria-hidden />
+                Série: <Link href={seriesHref(book.series)} className="ml-1 underline-offset-4 hover:underline">{book.series}</Link>
+                {book.series_index !== null &&
+                  `, volume ${book.series_index.toLocaleString('pt-BR')}`}
+              </p>
+            )}
 
-          {book.average_rating !== null && (
-            <div className="mb-4 flex items-center" aria-label="Avaliação dos leitores">
-              <StarRating rating={book.average_rating} />
-              <span className="text-lg font-semibold">
-                {Number(book.average_rating).toFixed(1)}
-              </span>
-              {book.ratings_count !== null && (
-                <span className="ml-2 text-muted-foreground">
-                  ({Number(book.ratings_count).toLocaleString('pt-BR')} avaliações)
+            {book.average_rating !== null && (
+              <div
+                className="mt-4 flex items-center"
+                aria-label="Avaliação dos leitores"
+              >
+                <StarRating rating={book.average_rating} />
+                <span className="text-lg font-semibold">
+                  {Number(book.average_rating).toFixed(1)}
                 </span>
-              )}
-            </div>
-          )}
+                {book.ratings_count !== null && (
+                  <span className="ml-2 text-muted-foreground">
+                    ({Number(book.ratings_count).toLocaleString('pt-BR')}{' '}
+                    avaliações)
+                  </span>
+                )}
+              </div>
+            )}
 
-          {/* A descrição do Calibre é HTML. Sanitizada no servidor
-              (lib/description.ts) porque veio de metadados de terceiros. */}
-          {book.description && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+                <BookOpenIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                {book.num_pages} páginas
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+                <GlobeIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                {getLanguageLabel(book.language_code)}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                {book.publication_year}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
+                ISBN: {book.isbn13 || book.isbn || 'Nenhum'}
+              </span>
+            </div>
+
+            <div className="mt-6">
+              <ReadingAction
+                bookId={book.id}
+                initial={{
+                  readyToRead: book.ready_to_read,
+                  hasFile: book.has_file,
+                  canPrepare: book.source === 'calibre' && book.owned,
+                }}
+                tamanhoMaximo={TAMANHO_MAXIMO_ARQUIVO}
+              />
+            </div>
+
+            <div className="mt-6">
+              <TrackingControls
+                bookId={book.id}
+                initial={{
+                  readStatus: book.read_status,
+                  dateStarted: book.date_started,
+                  dateFinished: book.date_finished,
+                  myRating: book.my_rating,
+                  dnfReason: book.dnf_reason,
+                  nextUp: book.next_up,
+                  favorite: book.favorite,
+                  owned: book.owned,
+                }}
+              />
+            </div>
+
+            <div className="mt-4">
+              <ProgressControls
+                bookId={book.id}
+                numPages={book.num_pages}
+                initial={{
+                  readStatus: book.read_status,
+                  progressPercent: book.progress_percent,
+                  progressUpdatedAt: book.progress_updated_at
+                    ? book.progress_updated_at.toISOString()
+                    : null,
+                }}
+              />
+            </div>
+
+            <div className="mt-6">
+              <BookCollections
+                bookId={book.id}
+                atuais={book.collections}
+                todas={bibliotecas.map((b) => ({ id: b.id, name: b.name }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {book.description && (
+          <div className="mt-8 max-w-3xl">
+            {/* A descrição do Calibre é HTML. Sanitizada no servidor
+                (lib/description.ts) porque veio de metadados de terceiros. */}
             <div
-              className="mb-6 space-y-3 text-foreground/80 [&_a]:underline [&_li]:ml-5 [&_li]:list-disc"
+              className="space-y-3 text-foreground/80 [&_a]:underline [&_li]:ml-5 [&_li]:list-disc"
               dangerouslySetInnerHTML={{
                 __html: sanitizeDescription(book.description),
               }}
             />
-          )}
-
-          <ReadingAction
-            bookId={book.id}
-            initial={{
-              readyToRead: book.ready_to_read,
-              hasFile: book.has_file,
-              canPrepare: book.source === 'calibre' && book.owned,
-            }}
-            tamanhoMaximo={TAMANHO_MAXIMO_ARQUIVO}
-          />
-
-          <TrackingControls
-            bookId={book.id}
-            initial={{
-              readStatus: book.read_status,
-              dateStarted: book.date_started,
-              dateFinished: book.date_finished,
-              myRating: book.my_rating,
-              dnfReason: book.dnf_reason,
-              nextUp: book.next_up,
-              favorite: book.favorite,
-              owned: book.owned,
-            }}
-          />
-
-          <ProgressControls
-            bookId={book.id}
-            numPages={book.num_pages}
-            initial={{
-              readStatus: book.read_status,
-              progressPercent: book.progress_percent,
-              progressUpdatedAt: book.progress_updated_at
-                ? book.progress_updated_at.toISOString()
-                : null,
-            }}
-          />
-
-          <div className="mb-6 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
-              <BookOpenIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
-              {book.num_pages} páginas
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
-              <GlobeIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
-              {getLanguageLabel(book.language_code)}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
-              {book.publication_year}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm text-secondary-foreground">
-              ISBN: {book.isbn || 'Nenhum'}
-            </span>
           </div>
+        )}
 
+        <div className="mt-10 space-y-8">
           <NotesSection bookId={book.id} initial={notas} />
-
           <BookmarksSection bookId={book.id} initial={marcadores} />
         </div>
-      </div>
       </div>
     </ScrollArea>
   );

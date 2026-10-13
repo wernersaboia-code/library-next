@@ -9,14 +9,14 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
   if (livros.length === 0) return null;
 
   return (
-    <section className="mb-7 rounded-2xl bg-card/70 p-4 ring-1 ring-border/70">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-lg font-semibold text-foreground">
+    <section className="mb-8 border-b border-border/60 pb-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-2xl font-bold text-foreground">
           Lendo agora
         </h2>
         <span className="text-xs text-muted-foreground">Acompanhe seu ritmo</span>
       </div>
-      <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex snap-x gap-5 overflow-x-auto pb-1">
         {livros.map((livro) => {
           const dias = diasParado(livro.progress_updated_at);
           const parado = dias !== null && dias >= DIAS_PARA_PARADO;
@@ -26,7 +26,7 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
             <Link
               key={livro.id}
               href={`/${livro.id}`}
-              className="w-24 shrink-0 snap-start rounded-xl transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hover:scale-105"
+              className="w-24 shrink-0 snap-start transition ease-in-out hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Photo
                 bookId={livro.id}
@@ -37,20 +37,22 @@ export function ReadingStrip({ livros }: { livros: ReadingNowBook[] }) {
                 readStatus="lendo"
                 myRating={null}
               />
-              <p className="mt-1 truncate text-xs font-medium text-foreground">
+              <p className="mt-1.5 truncate text-center font-serif text-xs font-medium text-foreground">
                 {livro.title}
               </p>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-emerald-600"
                   style={{ width: `${percentual}%` }}
                 />
               </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">
                 {percentual}%
               </p>
               {parado && (
-                <p className="text-[10px] text-amber-600">Parado há {dias}d</p>
+                <p className="text-center text-[10px] text-amber-600">
+                  Parado há {dias}d
+                </p>
               )}
             </Link>
           );

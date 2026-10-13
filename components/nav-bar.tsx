@@ -9,6 +9,9 @@ import { ThemeToggle } from './theme-toggle';
 
 export const LINKS = [
   { href: '/', label: 'Acervo', ativo: (path: string) => path === '/' },
+  { href: '/importar', label: 'Importar livro', ativo: (path: string) => path.startsWith('/importar') },
+  { href: '/autores', label: 'Autores', ativo: (path: string) => path.startsWith('/autores') },
+  { href: '/series', label: 'Séries', ativo: (path: string) => path.startsWith('/series') },
   {
     href: '/bibliotecas',
     label: 'Bibliotecas',

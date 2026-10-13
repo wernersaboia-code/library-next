@@ -3,6 +3,7 @@ import { BookmarkIcon, BookXIcon } from 'lucide-react';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchAbandonados, fetchLidos } from '@/lib/db/queries';
 import { Estante } from '@/components/estante';
+import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 
 const ABAS = [
@@ -36,17 +37,15 @@ export default async function LeiturasPage(props: {
   const plural = livros.length === 1 ? 'livro' : 'livros';
 
   return (
-    <div className="p-4 space-y-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Leituras
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {aba === 'abandonados'
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Leituras"
+        descricao={
+          aba === 'abandonados'
             ? `${livros.length} ${plural} que você largou no meio.`
-            : `${livros.length} ${plural} que você já terminou.`}
-        </p>
-      </div>
+            : `${livros.length} ${plural} que você já terminou.`
+        }
+      />
 
       {/* Mesmas classes de item ativo que a fileira do nav-bar usa, para não
           inventar um terceiro estilo de seleção no app. */}

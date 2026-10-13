@@ -1,11 +1,9 @@
 # Book Inventory
 
-Catálogo pessoal de livros. O acervo é importado do [Calibre](https://calibre-ebook.com/)
-e fica acessível pelo navegador — a ideia é consultar e atualizar a estante do
-celular, sem sentar no computador onde o Calibre roda.
-
-Não é um leitor: os arquivos dos livros continuam no Calibre e nos aparelhos de
-leitura. O que vive aqui é o catálogo e o registro da leitura.
+Catálogo pessoal de livros com leitor EPUB/PDF no navegador e no celular.
+O acervo pode vir do [Calibre](https://calibre-ebook.com/) ou de arquivos escolhidos
+no aparelho. Reúne a estante, os arquivos de leitura, notas e acompanhamento,
+com acesso offline aos livros baixados pelo aplicativo.
 
 ## Funcionalidades
 
@@ -16,6 +14,7 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 - Filtros por ano, avaliação, idioma, páginas, status de leitura, série e posse
 - Salto direto para qualquer página do acervo
 - Séries agrupadas por nome, com o número do volume à parte
+- Páginas de autores e séries, com busca por nome, contagem de livros e paginação; séries em ordem de volume
 - Título original em língua original (ex.: "Dune" para "Duna"), editável em qualquer livro
 
 **Leitura**
@@ -39,9 +38,12 @@ leitura. O que vive aqui é o catálogo e o registro da leitura.
 
 **Outros**
 
-- Cadastro manual de livros, com busca de metadados na Open Library
+- Cadastro a partir de EPUB/PDF, com extração local de dados, capa de EPUB e revisão antes de salvar
+- Avisos de duplicados por SHA-256, ISBN e título/autor; opção de reutilizar um cadastro sem arquivo
+- Metadados da Open Library, Google Books e Wikidata, com revisão de conflitos e fontes por campo
+- Catálogo **OPDS** para apps de leitura (KOReader, Thorium, Calibre)
 - Modo escuro acompanhando o tema do sistema
-- Isolamento por usuário no banco, via Row Level Security
+- Policies de Row Level Security por usuário (a ativação depende do papel da conexão; veja `docs/ativar-rls.md`)
 
 ## Stack
 
@@ -91,6 +93,63 @@ pnpm db:sync-files -- --path="D:\Caminho\Calibre Library"
 
 > O `--` antes de `--email`/`--path` é necessário para o pnpm repassar os
 > argumentos ao script.
+
+## OPDS
+
+O catálogo é publicado em `/opds` no formato OPDS 1.2 (Atom), para apps de
+leitura navegarem e baixarem os arquivos direto no aparelho (KOReader, Thorium,
+Calibre). A autenticação é HTTP Basic: **usuário** é o seu e-mail (o mesmo do
+`OWNER_EMAIL`) e **senha** é o `OPDS_PASSWORD` configurado no ambiente. Ambos são
+obrigatórios; sem eles, o endpoint responde 503. Outros e-mails não são aceitos.
+As consultas filtram o proprietário e as requisições têm limite local por IP.
+
+No app de leitura, aponte para `https://<seu-app>/opds` e ele descobre o
+resto. De lá dá para navegar pelo **Acervo** (`/opds/acervo`), por **Lendo
+agora**, **Próximos**, **Favoritos** e por cada **Biblioteca**
+(`/opds/bibliotecas`), além de **buscar por título ou autor** (OpenSearch).
+Só livros com o arquivo já enviado (`has_file`) ganham link de download; os
+demais aparecem no feed, mas sem o arquivo.
+
+## Importar pelo aparelho
+
+Abra **Importar livro** na barra lateral; no celular, a opção fica no menu **Mais**.
+Escolha um EPUB ou PDF e confira os dados extraídos. A leitura dos metadados e o
+cálculo do hash acontecem no aparelho. PDFs fornecem título, autor e número real
+de páginas quando disponíveis; o ano de criação do PDF não é tratado como ano
+de publicação. EPUBs também podem fornecer capa, ISBN, idioma, editora e sinopse.
+
+A opção **Completar dados com fontes externas** consulta o texto informado e
+permite comparar sugestões com os dados do arquivo. Os campos já preenchidos
+são preservados inicialmente; valores divergentes mostram sua fonte e podem
+ser escolhidos individualmente. A capa extraída do EPUB permanece neste fluxo.
+Em **Quero ter**, os resultados externos também passam por revisão antes do cadastro.
+As buscas usam cache em memória por cinco minutos e prazo total de 18 segundos
+por fonte; instâncias diferentes da Vercel não compartilham esse cache.
+
+Antes de cadastrar, o app procura duplicados no seu acervo. Você pode abrir um
+livro existente, enviar o arquivo para um cadastro do acervo que ainda não tem
+arquivo, ou confirmar outra edição. Um envio interrompido pode ser retomado
+no mesmo cadastro enquanto a tela estiver aberta. Após recarregar, a nova
+tentativa encontra o cadastro pendente pelo ISBN ou título/autor e permite
+reutilizá-lo. Arquivos com senha ou formato inválido não são importados.
+
+O upload usa o fluxo direto ao Supabase Storage já existente. Não é necessário
+aplicar uma migration nova para estas alterações.
+
+## Explorar autores e séries
+
+Abra **Autores** ou **Séries** na barra lateral; no celular, ambas estão no menu
+**Mais**. Os índices mostram apenas nomes associados aos livros do seu catálogo,
+incluindo desejados, e permitem procurar por parte do nome sem exigir acentos.
+Livros com vários autores aparecem na página de cada um, com todos os coautores.
+
+As séries usam os nomes já registrados no catálogo: espaços nas extremidades
+são ignorados, mas nomes diferentes não são unidos automaticamente. Os volumes
+são ordenados pelo número, incluindo frações; livros sem número ficam ao final.
+As listas têm 28 livros por página. Na ficha, os nomes dos autores e da série
+levam às páginas correspondentes; o botão **Voltar** conserva a página de origem.
+
+Detalhes e validação em [docs/navegacao-autores-series.md](docs/navegacao-autores-series.md).
 
 ## Comandos
 

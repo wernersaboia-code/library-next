@@ -8,6 +8,7 @@ vi.mock('@/lib/auth-user', () => ({
 vi.mock('@/lib/db/with-user', () => ({
   withUser: vi.fn(async (_uid: string, fn: unknown) => run(fn)),
 }));
+vi.mock('@/lib/db/duplicates', () => ({ findDuplicates: vi.fn(async () => []) }));
 
 async function POST(body: unknown) {
   const mod = await import('@/app/api/books/route');
@@ -24,11 +25,15 @@ async function DELETE(id: string) {
   );
 }
 
-beforeEach(() => { vi.clearAllMocks(); run.mockResolvedValue([{ id: 1 }]); });
+beforeEach(async () => {
+  vi.clearAllMocks(); run.mockResolvedValue({ bookId: 1 });
+  const { findDuplicates } = await import('@/lib/db/duplicates');
+  vi.mocked(findDuplicates).mockResolvedValue([]);
+});
 
 describe('POST /api/books', () => {
   it('cria livro manual dentro de withUser', async () => {
-    run.mockResolvedValue(1);
+    run.mockResolvedValue({ bookId: 1 });
     const res = await POST({ title: 'Meu Desejado', authors: ['Autor X'] });
     expect(res.status).toBe(200);
     const { withUser } = await import('@/lib/db/with-user');
@@ -59,6 +64,47 @@ describe('POST /api/books', () => {
 
   it('recusa averageRating fora de 0..5', async () => {
     expect((await POST({ title: 'X', averageRating: 9 })).status).toBe(400);
+  });
+
+  it('persiste ISBN, idioma e sinopse encontrados na busca', async () => {
+    const values = vi.fn(() => ({ returning: async () => [{ id: 1 }] }));
+    run.mockImplementation(async (fn) => fn({ insert: () => ({ values }) }));
+    const res = await POST({ title: 'Duna', isbn13: '0-441-01359-7', language: 'pt-BR', description: '<p>Sinopse</p>' });
+    expect(res.status).toBe(200);
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      isbn13: '9780441013593', language_code: 'por', description: '<p>Sinopse</p>',
+    }));
+  });
+
+  it('recusa ISBN e idioma inválidos antes de gravar', async () => {
+    expect((await POST({ title: 'X', isbn13: '1111111111111' })).status).toBe(400);
+    expect((await POST({ title: 'X', language: '????' })).status).toBe(400);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('exige revisão de duplicados antes de inserir e usa somente o usuário autenticado', async () => {
+    const { findDuplicates } = await import('@/lib/db/duplicates');
+    const duplicate = { id: 9, title: 'Duna', authors: [], isbn13: '9780441013593', sha256: null, hasFile: true, owned: true, reason: 'isbn' as const };
+    vi.mocked(findDuplicates).mockResolvedValue([duplicate]);
+    const tx = { execute: vi.fn(), insert: vi.fn() };
+    run.mockImplementation(async (fn) => fn(tx));
+    const res = await POST({ title: 'Duna', isbn13: '9780441013593', userId: 'outra-conta', checkDuplicates: true });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ duplicates: [duplicate] });
+    expect(findDuplicates).toHaveBeenCalledWith(tx, 'u-1', expect.objectContaining({ isbn13: '9780441013593' }));
+    expect(tx.execute).toHaveBeenCalledOnce();
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it('permite outra edição quando a pessoa confirma explicitamente', async () => {
+    const { findDuplicates } = await import('@/lib/db/duplicates');
+    vi.mocked(findDuplicates).mockResolvedValue([{ id: 9, title: 'Duna', authors: [], isbn13: null, sha256: null, hasFile: false, owned: true, reason: 'titulo' }]);
+    const values = vi.fn(() => ({ returning: async () => [{ id: 10 }] }));
+    run.mockImplementation(async (fn) => fn({ execute: vi.fn(), insert: () => ({ values }) }));
+    const res = await POST({ title: 'Duna', checkDuplicates: true, allowDuplicate: true, owned: true });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ bookId: 10 });
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-1', owned: true }));
   });
 });
 

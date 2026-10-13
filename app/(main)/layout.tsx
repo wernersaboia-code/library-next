@@ -1,11 +1,12 @@
-import { Filter, FilterFallback } from '@/components/filters';
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { BookMarkedIcon } from 'lucide-react';
 import { MobileFilters } from '@/components/mobile-filters';
 import { Search, SearchFallback } from '@/components/search';
-import NavBar from '@/components/nav-bar';
 import MobileTabBar from '@/components/mobile-tab-bar';
-import { Suspense } from 'react';
+import Sidebar from '@/components/sidebar';
 import { fetchCollections } from '@/lib/db/collections';
-import { getCurrentUserId } from '@/lib/auth-user';
+import { getCurrentUser } from '@/lib/auth-user';
 import { OfflineProvider } from '@/components/offline-provider';
 
 export default async function MainLayout({
@@ -13,42 +14,44 @@ export default async function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const userId = await getCurrentUserId();
-  const bibliotecas = await fetchCollections(userId);
+  const user = await getCurrentUser();
+  const bibliotecas = await fetchCollections(user.id);
 
   return (
     <OfflineProvider>
-      <div className="group flex w-full">
-        <div className="hidden md:block w-[300px] h-screen sticky top-0 p-6">
-          <div className="h-full rounded-xl bg-card text-card-foreground shadow-sm ring-1 ring-border overflow-hidden">
-            <Suspense fallback={<FilterFallback />}>
-              <Filter bibliotecas={bibliotecas} />
-            </Suspense>
-          </div>
-        </div>
-        {/* min-w-0: sem isso, um filho com overflow-x-auto (as tarjas de
-            estatística no celular) empurra este item flex para o tamanho do
-            seu próprio conteúdo em vez de cortar em overflow — a página
-            inteira ficava mais larga que a tela, exigindo rolar para o lado
-            para ver o resto, inclusive o botão "Mais" da barra fixa do rodapé. */}
-        <div className="flex-1 flex flex-col min-h-screen min-w-0">
-          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
-            <div className="mx-8 pt-3">
-              <Suspense fallback={null}>
-                <NavBar />
-              </Suspense>
-            </div>
-            <div className="mx-8 flex items-center gap-2 pb-4">
+      <div className="flex min-h-screen w-full">
+        <Sidebar
+          className="sticky top-0 hidden h-screen w-64 shrink-0 md:flex"
+          bibliotecas={bibliotecas}
+          email={user.email}
+        />
+
+        <div className="flex min-w-0 flex-1 p-2 md:ps-0">
+          <div className="flex min-h-[calc(100vh-1rem)] w-full flex-col rounded-lg border border-border bg-card text-card-foreground">
+            <header className="sticky top-0 z-10 flex items-center gap-2 rounded-t-lg border-b border-border/60 bg-card/90 px-4 py-3 backdrop-blur-sm">
+              <Link
+                href="/"
+                aria-label="Book Inventory"
+                className="mr-1 flex shrink-0 items-center gap-2 md:hidden"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <BookMarkedIcon className="h-4 w-4" aria-hidden />
+                </span>
+              </Link>
               <Suspense fallback={<SearchFallback />}>
                 <Search />
               </Suspense>
               <Suspense fallback={null}>
                 <MobileFilters bibliotecas={bibliotecas} />
               </Suspense>
-            </div>
+            </header>
+
+            <main className="flex min-h-0 flex-1 flex-col p-4 pb-20 md:p-6 md:pb-6">
+              {children}
+            </main>
           </div>
-          <div className="flex-1 flex flex-col p-4 pb-16 md:pb-4">{children}</div>
         </div>
+
         <Suspense fallback={null}>
           <MobileTabBar />
         </Suspense>

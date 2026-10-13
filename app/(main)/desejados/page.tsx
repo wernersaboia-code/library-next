@@ -1,6 +1,7 @@
 import { fetchWishlist } from '@/lib/db/queries';
 import { fetchNoteComments } from '@/lib/db/notes';
 import { getCurrentUserId } from '@/lib/auth-user';
+import { PageHeader } from '@/components/page-header';
 import { WishlistClient } from './wishlist-client';
 
 export default async function DesejadosPage() {
@@ -9,14 +10,11 @@ export default async function DesejadosPage() {
   const comentarios = await fetchNoteComments(userId, livros.map((l) => l.id));
 
   return (
-    <div className="max-w-2xl mx-auto w-full p-4 space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Quero ter</h1>
-        <p className="text-sm text-muted-foreground">
-          Livros que você ainda não tem, cadastrados à mão — não fazem parte
-          do acervo importado do Calibre.
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <PageHeader
+        titulo="Quero ter"
+        descricao="Livros que você ainda não tem, cadastrados à mão — não fazem parte do acervo importado do Calibre."
+      />
       <WishlistClient
         initial={livros}
         initialComments={Object.fromEntries(comentarios)}

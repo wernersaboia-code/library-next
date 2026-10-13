@@ -14,7 +14,7 @@ vi.mock('@/lib/db/with-user', () => ({
 }));
 vi.mock('@/lib/covers', async () => {
   const real = await vi.importActual<typeof import('@/lib/covers')>('@/lib/covers');
-  return { ...real, applyCoverFromBuffer: aplicar, fetchOpenLibraryCover: baixar };
+  return { ...real, applyCoverFromBuffer: aplicar, fetchCoverFromProvider: baixar };
 });
 vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: limitar }));
 
@@ -40,8 +40,20 @@ describe('POST /api/books/[id]/cover', () => {
   it('aplica a capa da Open Library por coverId', async () => {
     const res = await POST('1', { coverId: 12345 });
     expect(res.status).toBe(200);
-    expect(baixar).toHaveBeenCalledWith(12345);
+    expect(baixar).toHaveBeenCalledWith('openlibrary', '12345');
     expect(aplicar).toHaveBeenCalled();
+  });
+
+  it('aplica a capa por referência de provedor (Google Books)', async () => {
+    const res = await POST('1', { ref: { provider: 'googlebooks', id: 'abc_DEF-1' } });
+    expect(res.status).toBe(200);
+    expect(baixar).toHaveBeenCalledWith('googlebooks', 'abc_DEF-1');
+  });
+
+  it('recusa referência de capa inválida com 400', async () => {
+    const res = await POST('1', { ref: { provider: 'openlibrary', id: '../etc' } });
+    expect(res.status).toBe(400);
+    expect(baixar).not.toHaveBeenCalled();
   });
 
   it('recusa livro do Calibre com 409', async () => {

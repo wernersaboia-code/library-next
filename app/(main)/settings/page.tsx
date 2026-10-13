@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { PageHeader } from '@/components/page-header';
 
 export default function SettingsPage() {
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
@@ -28,11 +29,11 @@ export default function SettingsPage() {
   if (status !== 'authenticated') return null;
 
   return (
-    <div className="max-w-2xl mx-auto p-8 space-y-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Configurações</h1>
+    <div className="mx-auto max-w-2xl space-y-8">
+      <PageHeader titulo="Configurações" />
 
       <section className="rounded-xl bg-card p-6 text-card-foreground shadow-sm ring-1 ring-border">
-        <h2 className="text-lg font-semibold mb-4">Conta</h2>
+        <h2 className="mb-4 text-lg font-semibold">Conta</h2>
         <p className="text-muted-foreground">
           Conectado como <strong className="text-foreground">{email}</strong>
         </p>

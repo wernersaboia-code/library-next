@@ -55,7 +55,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Fora do middleware: login, internos do Next, arquivos com extensão e as
-  // rotas de API (que respondem 401 via getCurrentUser, sem redirect HTML).
-  matcher: ['/((?!api|login|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  // Fora do middleware: login, internos do Next, arquivos com extensão, as
+  // rotas de API (que respondem 401 via getCurrentUser, sem redirect HTML) e
+  // o OPDS, que autentica por HTTP Basic (apps de leitura não têm cookie de
+  // sessão do Supabase).
+  matcher: ['/((?!api|opds|login|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };

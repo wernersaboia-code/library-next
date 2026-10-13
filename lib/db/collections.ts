@@ -1,6 +1,6 @@
 // lib/db/collections.ts
 import { cache } from 'react';
-import { sql, eq, asc } from 'drizzle-orm';
+import { sql, eq, asc, and } from 'drizzle-orm';
 import { books, authors, bookToAuthor, collections, bookCollections } from './schema';
 import { withUser } from './with-user';
 
@@ -43,6 +43,7 @@ export const fetchCollections = cache(
           bookCollections,
           eq(bookCollections.collectionId, collections.id)
         )
+        .where(eq(collections.userId, userId))
         .groupBy(collections.id)
         .orderBy(asc(collections.name))
     );
@@ -59,7 +60,7 @@ export async function fetchCollection(
     tx
       .select({ id: collections.id, name: collections.name })
       .from(collections)
-      .where(eq(collections.id, id))
+      .where(and(eq(collections.id, id), eq(collections.userId, userId)))
       .limit(1)
   );
   return rows[0];
@@ -85,9 +86,10 @@ export async function fetchCollectionBooks(
       })
       .from(bookCollections)
       .innerJoin(books, eq(books.id, bookCollections.bookId))
+      .innerJoin(collections, eq(collections.id, bookCollections.collectionId))
       .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
       .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-      .where(eq(bookCollections.collectionId, id))
+      .where(and(eq(bookCollections.collectionId, id), eq(books.userId, userId), eq(collections.userId, userId)))
       .groupBy(books.id, bookCollections.addedAt)
       .orderBy(asc(bookCollections.addedAt), asc(books.id))
   );

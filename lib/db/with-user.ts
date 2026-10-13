@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { db } from './drizzle';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type UserTransaction = Tx;
 
 /**
  * Único ponto de acesso a dados de usuário.

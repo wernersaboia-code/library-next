@@ -14,6 +14,7 @@ const TIMEOUT_MS = 15000;
 export interface ExternalBook {
   title: string;
   author: string | null;
+  authors?: string[];
   publicationYear: number | null;
   numPages: number | null;
   coverId: number | null;
@@ -35,7 +36,7 @@ function numeroOuNulo(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function searchExternalBooks(query: string): Promise<ExternalBook[]> {
+export async function searchExternalBooks(query: string, signal?: AbortSignal): Promise<ExternalBook[]> {
   const params = new URLSearchParams({
     q: query, limit: String(LIMITE), fields: CAMPOS,
   });
@@ -43,7 +44,7 @@ export async function searchExternalBooks(query: string): Promise<ExternalBook[]
   let data: { docs?: Record<string, unknown>[] };
   try {
     const res = await fetch(`${SEARCH_URL}?${params}`, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) throw new ExternalSearchError();
@@ -66,6 +67,7 @@ export async function searchExternalBooks(query: string): Promise<ExternalBook[]
       title: typeof doc.title === 'string' ? doc.title : 'Sem título',
       author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
         ? doc.author_name[0] : null,
+      authors: Array.isArray(doc.author_name) ? doc.author_name.filter((name): name is string => typeof name === 'string') : [],
       publicationYear: numeroOuNulo(doc.first_publish_year),
       numPages: numeroOuNulo(doc.number_of_pages_median),
       coverId: numeroOuNulo(doc.cover_i),

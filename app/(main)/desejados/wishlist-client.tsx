@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Photo } from '@/components/photo';
 import { EmptyState } from '@/components/empty-state';
+import { MetadataReview } from '@/components/metadata-review';
+import type { AggregatedBook } from '@/lib/metadata/types';
 import { agruparPorLetra, filtrarLivros } from './agrupar';
 
 interface LivroDesejado {
@@ -40,14 +42,24 @@ interface Note {
   note: string | null;
 }
 
-interface Candidato {
-  title: string;
-  author: string | null;
-  publicationYear: number | null;
-  numPages: number | null;
-  coverId: number | null;
-  ratingsAverage: number | null;
-  ratingsCount: number | null;
+type Candidato = AggregatedBook;
+
+const ROTULO_FONTE: Record<string, string> = {
+  openlibrary: 'Open Library',
+  googlebooks: 'Google Books',
+  wikidata: 'WikiData',
+};
+
+/** Miniatura efêmera de pré-visualização (a capa real vem do nosso Storage). */
+function urlMiniatura(cover: Candidato['cover']): string | null {
+  if (!cover) return null;
+  if (cover.provider === 'openlibrary') {
+    return `https://covers.openlibrary.org/b/id/${cover.id}-M.jpg`;
+  }
+  if (cover.provider === 'googlebooks') {
+    return `https://books.google.com/books/content?id=${cover.id}&printsec=frontcover&img=1&zoom=1`;
+  }
+  return null;
 }
 
 /**
@@ -95,6 +107,8 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
   const [buscando, setBuscando] = useState(false);
   const [candidatos, setCandidatos] = useState<Candidato[] | null>(null);
   const [erroBusca, setErroBusca] = useState<string | null>(null);
+  const [avisoBusca, setAvisoBusca] = useState<string | null>(null);
+  const [revisao, setRevisao] = useState<Candidato | null>(null);
 
   async function buscarExterno() {
     const termo = busca.trim();
@@ -104,11 +118,13 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
     }
 
     setErroBusca(null);
+    setAvisoBusca(null);
     setCandidatos(null);
+    setRevisao(null);
     setBuscando(true);
     try {
       const res = await fetch(
-        `/api/books/search-external?q=${encodeURIComponent(termo)}`
+        `/api/books/metadata?q=${encodeURIComponent(termo)}`
       );
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -119,6 +135,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
         return;
       }
       setCandidatos((data?.resultados ?? []) as Candidato[]);
+      if (data?.falhas?.length) setAvisoBusca('Algumas fontes não responderam. Os resultados disponíveis estão abaixo.');
     } catch {
       setErroBusca('Não foi possível buscar agora. Preencha manualmente.');
     } finally {
@@ -137,9 +154,13 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: candidato.title,
-          authors: candidato.author ? [candidato.author] : undefined,
+          authors: candidato.authors.length ? candidato.authors : undefined,
           publicationYear: candidato.publicationYear ?? undefined,
           numPages: candidato.numPages ?? undefined,
+          publisher: candidato.publisher ?? undefined,
+          isbn13: candidato.isbn13 ?? undefined,
+          language: candidato.language ?? undefined,
+          description: candidato.description ?? undefined,
           averageRating: candidato.ratingsAverage ?? undefined,
           ratingsCount: candidato.ratingsCount ?? undefined,
           owned: false,
@@ -151,14 +172,14 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
         return;
       }
 
-      // O cliente manda só o id numérico da capa; quem monta a URL é o
-      // servidor. Falha aqui não desfaz o livro — ele já está na lista.
-      if (candidato.coverId !== null && typeof data?.bookId === 'number') {
+      // O cliente manda só a referência (provedor + id); quem monta a URL e
+      // baixa é o servidor. Falha aqui não desfaz o livro — já está na lista.
+      if (candidato.cover && typeof data?.bookId === 'number') {
         try {
           const capaRes = await fetch(`/api/books/${data.bookId}/cover`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ coverId: candidato.coverId }),
+            body: JSON.stringify({ ref: candidato.cover }),
           });
           if (!capaRes.ok) {
             setAviso('Livro adicionado, mas a capa não pôde ser baixada.');
@@ -171,6 +192,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
       setSucesso(`“${candidato.title}” adicionado à lista.`);
       setBusca('');
       setCandidatos(null);
+      setRevisao(null);
       router.refresh();
     } catch {
       setErroBusca('Falha de rede ao adicionar o livro.');
@@ -285,7 +307,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
 
         <div>
           <Label className="block mb-1" htmlFor="wishlist-busca">
-            Buscar na Open Library
+            Buscar por título, autor ou ISBN
           </Label>
           <div className="flex gap-2">
             <Input
@@ -298,7 +320,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
                   void buscarExterno();
                 }
               }}
-              placeholder="Título ou autor"
+              placeholder="Título, autor ou ISBN"
             />
             <Button
               type="button"
@@ -310,6 +332,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
             </Button>
           </div>
           {erroBusca && <p className="mt-1 text-sm text-red-600">{erroBusca}</p>}
+          {avisoBusca && <p role="status" className="mt-1 text-sm text-muted-foreground">{avisoBusca}</p>}
           {candidatos !== null && candidatos.length === 0 && (
             <p className="mt-1 text-sm text-gray-500">
               Nada encontrado — preencha manualmente.
@@ -321,18 +344,19 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
           <ul className="space-y-2">
             {candidatos.map((c, i) => {
               const nota = formatarNota(c.ratingsAverage, c.ratingsCount);
+              const thumb = urlMiniatura(c.cover);
               return (
                 <li
-                  key={`${c.title}-${c.coverId ?? i}`}
-                  className="flex items-start gap-3 border rounded-md p-2"
+                  key={`${c.isbn13 ?? c.title}-${i}`}
+                  className="flex items-start gap-3 rounded-md border p-2"
                 >
-                  {c.coverId !== null ? (
+                  {thumb ? (
                     // Miniatura efêmera de pré-visualização: `img` simples em
                     // vez de next/image, para não liberar um host externo no
                     // otimizador. A capa definitiva vem do nosso Storage.
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={`https://covers.openlibrary.org/b/id/${c.coverId}-M.jpg`}
+                      src={thumb}
                       alt=""
                       className="h-20 w-14 shrink-0 rounded object-cover"
                     />
@@ -342,25 +366,46 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{c.title}</p>
                     <p className="text-sm text-gray-500">
-                      {[c.author, c.publicationYear].filter(Boolean).join(' · ')}
+                      {[c.authors.join(', '), c.publicationYear]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      {nota ?? 'sem avaliações'}
-                    </p>
+                    {c.publisher && (
+                      <p className="text-sm text-gray-500">{c.publisher}</p>
+                    )}
+                    {nota && <p className="text-sm text-gray-500">{nota}</p>}
+                    {c.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                        {c.description}
+                      </p>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {c.sources.map((fonte) => (
+                        <span
+                          key={fonte}
+                          className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                        >
+                          {ROTULO_FONTE[fonte] ?? fonte}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => void escolher(c)}
+                    onClick={() => setRevisao(c)}
                     disabled={isSaving}
                   >
-                    Escolher
+                    Revisar
                   </Button>
                 </li>
               );
             })}
           </ul>
         )}
+
+        {revisao && <MetadataReview key={candidatos?.indexOf(revisao)} candidate={revisao}
+          busy={isSaving} confirmLabel="Adicionar à lista" onConfirm={(book) => void escolher(book)} onCancel={() => setRevisao(null)} />}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
@@ -434,7 +479,7 @@ export function WishlistClient({ initial, initialComments }: WishlistClientProps
         <EmptyState
           icone={BookmarkPlusIcon}
           titulo="Nenhum livro na lista de desejados"
-          descricao='Toque em "Adicionar livro" acima para buscar na Open Library ou preencher manualmente.'
+          descricao='Toque em "Adicionar livro" acima para buscar nas fontes externas ou preencher manualmente.'
         />
       ) : (
         <div className="space-y-3">

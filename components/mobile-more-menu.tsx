@@ -11,6 +11,9 @@ import {
   MoreHorizontalIcon,
   SettingsIcon,
   XIcon,
+  UploadIcon,
+  UsersIcon,
+  LayersIcon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { HREFS_BARRA, LINKS } from './nav-bar';
@@ -20,6 +23,9 @@ import { ThemeToggle } from './theme-toggle';
 // `noUncheckedIndexedAccess`, então uma chave ausente aqui tiparia como
 // componente válido e só quebraria em execução, ao renderizar.
 const ICONES_MAIS: Record<string, typeof BookOpenIcon> = {
+  '/importar': UploadIcon,
+  '/autores': UsersIcon,
+  '/series': LayersIcon,
   '/leituras': BookOpenIcon,
   '/favoritos': HeartIcon,
   '/baixados': HardDriveDownloadIcon,
@@ -87,7 +93,7 @@ export function MobileMoreMenu() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setAberto(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-3xl bg-card/95 pb-[env(safe-area-inset-bottom)] text-card-foreground shadow-2xl ring-1 ring-border backdrop-blur-md">
+          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[85dvh] max-w-md flex-col overflow-y-auto rounded-t-3xl bg-card/95 pb-[env(safe-area-inset-bottom)] text-card-foreground shadow-2xl ring-1 ring-border backdrop-blur-md">
             <span className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted" aria-hidden />
             <div className="flex items-center justify-between px-5 pt-3">
               <h2 className="font-display text-xl font-semibold tracking-tight">

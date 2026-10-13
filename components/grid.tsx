@@ -10,6 +10,7 @@ import { BookCaption } from './book-caption';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from './empty-state';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
+import { definirPayloadLivro } from '@/lib/dnd';
 
 interface Biblioteca {
   id: number;
@@ -159,7 +160,7 @@ export function BooksGrid({
         {aviso && <span className="text-sm text-muted-foreground">{aviso}</span>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {!books?.length ? (
           <div className="col-span-full">
             <EmptyState
@@ -230,7 +231,14 @@ export function BooksGrid({
               <Link
                 href={`/${book.id}?${stringifySearchParams(searchParams)}`}
                 key={book.id}
-                className="content-auto block rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hover:scale-105"
+                draggable
+                onDragStart={(e) =>
+                  definirPayloadLivro(e.dataTransfer, {
+                    bookId: book.id,
+                    title: book.title,
+                  })
+                }
+                className="content-auto block cursor-grab rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing md:hover:scale-[1.02]"
                 // Sempre pré-carrega (default): a página do livro é dinâmica,
                 // e o payload pré-carregado cobre a transição com o loading
                 // em vez de esperar o round-trip começar do zero no clique.

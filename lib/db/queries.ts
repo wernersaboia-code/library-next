@@ -304,7 +304,8 @@ export async function fetchBookById(userId: string, id: string) {
                 date_started: books.date_started,
                 date_finished: books.date_finished,
                 createdAt: books.createdAt,
-                authors: sql<string[]>`array_agg(${authors.name})`,
+                authors: sql<string[]>`array_remove(array_agg(${authors.name} order by ${authors.name}), NULL)`,
+                authorLinks: sql<{ id: string; name: string }[]>`coalesce(json_agg(json_build_object('id', ${authors.id}, 'name', ${authors.name}) order by ${authors.name}) filter (where ${authors.id} is not null), '[]'::json)`,
                 thumbhash: books.thumbhash,
                 // Subconsulta em vez de mais um leftJoin: a query já agrega
                 // autores com array_agg, e um segundo join multiplicaria as
@@ -315,13 +316,13 @@ export async function fetchBookById(userId: string, id: string) {
                                     order by c.name)
                     from book_collections bc
                     join collections c on c.id = bc.collection_id
-                    where bc.book_id = ${books.id}
+                    where bc.book_id = ${books.id} and c.user_id = ${userId}
                 ), '[]'::json)`,
             })
             .from(books)
             .leftJoin(bookToAuthor, eq(books.id, bookToAuthor.bookId))
             .leftJoin(authors, eq(bookToAuthor.authorId, authors.id))
-            .where(eq(books.id, parseInt(id)))
+            .where(and(eq(books.id, parseInt(id)), eq(books.userId, userId)))
             .groupBy(books.id)
             .limit(1)
     );

@@ -1,14 +1,21 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { GeistSans } from 'geist/font/sans';
-import { Fraunces } from 'next/font/google';
+import { Neuton, Titillium_Web } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { SerwistProvider } from '@serwist/turbopack/react';
 import { cn } from '@/lib/utils';
 
-const FrauncesFont = Fraunces({
+const TitilliumWeb = Titillium_Web({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  weight: ['400', '600', '700'],
+  variable: '--font-titillium',
+  display: 'swap',
+});
+
+const NeutonFont = Neuton({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-neuton',
   display: 'swap',
 });
 
@@ -26,7 +33,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#111827',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
+    { media: '(prefers-color-scheme: dark)', color: '#030712' },
+  ],
 };
 
 export default function RootLayout({
@@ -39,8 +49,8 @@ export default function RootLayout({
       <body
         className={cn(
           'bg-background font-sans text-foreground antialiased',
-          GeistSans.variable,
-          FrauncesFont.variable
+          TitilliumWeb.variable,
+          NeutonFont.variable
         )}
       >
         {/* Aplica o tema antes do primeiro paint: sem isso o escuro pisca

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { withUser } from '@/lib/db/with-user';
 import { books } from '@/lib/db/schema';
 import { errorResponse } from '@/lib/errors';
 import {
-  applyCoverFromBuffer, fetchOpenLibraryCover,
-  MAX_COVER_BYTES, TIPOS_ACEITOS,
+  applyCoverFromBuffer, fetchCoverFromProvider, isCoverProvider,
+  MAX_COVER_BYTES, TIPOS_ACEITOS, type CoverProvider,
 } from '@/lib/covers';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -20,10 +20,10 @@ export async function POST(
       return NextResponse.json({ error: 'id inválido' }, { status: 400 });
     }
 
-    // O RLS escopa por dono: um livro de outro usuário volta como não encontrado.
+    // O filtro explícito também protege conexões que ainda ignoram a RLS.
     const source = await withUser(userId, async (tx) => {
       const [livro] = await tx.select({ source: books.source })
-        .from(books).where(eq(books.id, bookId)).limit(1);
+        .from(books).where(and(eq(books.id, bookId), eq(books.userId, userId))).limit(1);
       return livro?.source ?? null;
     });
 
@@ -46,17 +46,34 @@ export async function POST(
 
     const contentType = req.headers.get('content-type') ?? '';
 
-    // Caminho 1: capa da Open Library, por id numérico (AD-7).
+    // Caminho 1: capa de uma fonte externa, por referência (provedor + id).
+    // O cliente nunca manda a URL — o host é fixo por provedor (AD-7).
     if (contentType.includes('application/json')) {
       const body = await req.json();
-      const coverId = Number(body.coverId);
-      // Só o id numérico é aceito. Uma URL enviada pelo cliente (coverUrl)
-      // é ignorada de propósito: baixá-la seria SSRF.
-      if (!Number.isInteger(coverId) || coverId <= 0) {
-        return NextResponse.json(
-          { error: 'coverId inválido' }, { status: 400 });
+
+      let provider: CoverProvider = 'openlibrary';
+      let id: string | null = null;
+
+      if (body?.ref && isCoverProvider(body.ref.provider) && typeof body.ref.id === 'string') {
+        provider = body.ref.provider;
+        id = body.ref.id;
+      } else if (body.coverId !== undefined) {
+        const coverId = Number(body.coverId);
+        if (!Number.isInteger(coverId) || coverId <= 0) {
+          return NextResponse.json(
+            { error: 'coverId inválido' }, { status: 400 });
+        }
+        id = String(coverId);
       }
-      const buf = await fetchOpenLibraryCover(coverId);
+
+      // id restrito a caracteres de identificador: evita caminho/consulta
+      // maliciosa montada a partir da referência.
+      if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
+        return NextResponse.json(
+          { error: 'Referência de capa inválida' }, { status: 400 });
+      }
+
+      const buf = await fetchCoverFromProvider(provider, id);
       const imageUrl = await applyCoverFromBuffer(userId, bookId, buf);
       return NextResponse.json({ success: true, imageUrl });
     }

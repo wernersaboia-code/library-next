@@ -1,6 +1,7 @@
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchNextUp } from '@/lib/db/queries';
 import { Estante } from '@/components/estante';
+import { PageHeader } from '@/components/page-header';
 import { BookmarkIcon } from 'lucide-react';
 
 export default async function ProximosPage(props: {
@@ -12,14 +13,13 @@ export default async function ProximosPage(props: {
   const livros = await fetchNextUp(userId, search);
 
   return (
-    <div className="p-4 space-y-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Próximos</h1>
-        <p className="text-sm text-muted-foreground">
-          {livros.length} {livros.length === 1 ? 'livro' : 'livros'} na fila —
-          o que você decidiu ler antes dos outros.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Próximos"
+        descricao={`${livros.length} ${
+          livros.length === 1 ? 'livro' : 'livros'
+        } na fila — o que você decidiu ler antes dos outros.`}
+      />
 
       <Estante
         livros={livros}

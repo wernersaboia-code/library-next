@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { HardDriveDownloadIcon } from 'lucide-react';
 import {
   listarLivros,
@@ -53,14 +54,13 @@ export default function BaixadosPage() {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Baixados</h1>
-        <p className="text-sm text-muted-foreground">
-          Livros salvos neste navegador para leitura sem internet.
-          {uso && uso.cota ? ` Uso: ${mb(uso.uso)} de ${mb(uso.cota)}.` : ''}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Baixados"
+        descricao={`Livros salvos neste navegador para leitura sem internet.${
+          uso && uso.cota ? ` Uso: ${mb(uso.uso)} de ${mb(uso.cota)}.` : ''
+        }`}
+      />
 
       {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
 

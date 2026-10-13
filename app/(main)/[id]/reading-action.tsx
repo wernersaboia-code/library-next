@@ -6,57 +6,12 @@ import { BookOpenIcon, CloudUploadIcon, UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRefreshAgendado } from '@/lib/use-refresh-agendado';
 import { limiteEmMegabytes, validarArquivo } from '@/lib/arquivo-do-livro';
+import { enviarArquivoDoLivro } from '@/lib/book-upload';
 
 interface ReadingActionInitial {
   readyToRead: boolean;
   hasFile: boolean;
   canPrepare: boolean;
-}
-
-/** Sobe o arquivo mostrando o progresso — `fetch` não conta o quanto já foi. */
-function enviarComProgresso(
-  url: string,
-  arquivo: File,
-  mime: string,
-  aoProgredir: (percentual: number) => void
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', mime);
-    // O caminho pode já ter o arquivo de uma tentativa que morreu no meio.
-    xhr.setRequestHeader('x-upsert', 'true');
-    xhr.upload.onprogress = (evento) => {
-      if (evento.lengthComputable) {
-        aoProgredir(Math.round((evento.loaded / evento.total) * 100));
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else if (/exceeded|quota|maximum|too large/i.test(xhr.responseText)) {
-        reject(new Error('Espaço de armazenamento esgotado.'));
-      } else {
-        reject(new Error(`Falha ao enviar o arquivo (HTTP ${xhr.status}).`));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Falha de rede ao enviar o arquivo.'));
-    xhr.send(arquivo);
-  });
-}
-
-/**
- * SHA-256 em hexadecimal — o mesmo campo que o comando do computador grava, e o
- * que faz `db:sync-files` pular um arquivo que já está lá. Sem `crypto.subtle`
- * (contexto inseguro) o envio segue, só sem o hash.
- */
-async function hashDoArquivo(arquivo: File): Promise<string | null> {
-  try {
-    const digest = await crypto.subtle.digest('SHA-256', await arquivo.arrayBuffer());
-    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return null;
-  }
 }
 
 export function ReadingAction({
@@ -113,32 +68,7 @@ export function ReadingAction({
 
     setEnviando(0);
     try {
-      const pedido = await fetch(`/api/books/${bookId}/file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: arquivo.name, tamanho: arquivo.size }),
-      });
-      const dados = await pedido.json().catch(() => null);
-      if (!pedido.ok || !dados?.signedUrl) {
-        setErro(dados?.error ?? 'Não foi possível preparar o envio.');
-        return;
-      }
-
-      await enviarComProgresso(dados.signedUrl, arquivo, dados.mime ?? escolha.mime, setEnviando);
-
-      const registro = await fetch(`/api/books/${bookId}/file`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          formato: dados.formato ?? escolha.formato,
-          sha256: await hashDoArquivo(arquivo),
-        }),
-      });
-      const confirmado = await registro.json().catch(() => null);
-      if (!registro.ok) {
-        setErro(confirmado?.error ?? 'O arquivo subiu, mas o livro não foi registrado.');
-        return;
-      }
+      await enviarArquivoDoLivro(bookId, arquivo, tamanhoMaximo, setEnviando);
 
       setEnviado(true);
       agendarRefresh();

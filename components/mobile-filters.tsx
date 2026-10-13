@@ -9,9 +9,8 @@ import { Filter, FilterFallback, contarFiltrosAtivos } from '@/components/filter
 import { parseSearchParams } from '@/lib/url-state';
 
 /**
- * Acesso aos filtros no celular: a sidebar é `hidden md:block`, então sem
- * este botão + drawer não havia como filtrar fora do desktop. O painel
- * reaproveita o mesmo <Filter> da sidebar.
+ * Acesso aos filtros em qualquer largura: o painel abre como drawer e
+ * reaproveita o mesmo <Filter> de sempre.
  */
 export function MobileFilters({
   bibliotecas,
@@ -45,7 +44,7 @@ export function MobileFilters({
         variant="outline"
         size="sm"
         onClick={() => setAberto(true)}
-        className="h-12 shrink-0 gap-2 px-4 md:hidden"
+        className="h-10 shrink-0 gap-2 px-3"
         aria-haspopup="dialog"
       >
         <SlidersHorizontalIcon className="h-4 w-4" aria-hidden />
@@ -59,7 +58,7 @@ export function MobileFilters({
 
       {aberto && (
         <div
-          className="fixed inset-0 z-50 md:hidden"
+          className="fixed inset-0 z-50"
           role="dialog"
           aria-modal="true"
           aria-label="Filtros"
