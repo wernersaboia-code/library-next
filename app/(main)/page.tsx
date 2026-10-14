@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { BooksGrid } from '@/components/grid';
 import { BookPagination } from '@/components/book-pagination';
 import Dashboard from '@/components/dashboard';
@@ -70,14 +69,12 @@ export default async function Page(
         </div>
       </div>
       <div className="mt-auto p-4 border-t">
-        <Suspense fallback={null}>
-          <BookPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalResults={estimatedTotal}
-            searchParams={parsedSearchParams}
-          />
-        </Suspense>
+        <BookPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalResults={estimatedTotal}
+          searchParams={parsedSearchParams}
+        />
       </div>
     </div>
   );
