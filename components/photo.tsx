@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { createPngDataUri } from 'unlazy/thumbhash';
 import { CoverBadges } from './cover-badges';
 import { OfflineBadge } from './offline-badge';
@@ -58,7 +58,7 @@ function CapaGerada({ title, seed }: { title: string; seed: string }) {
   );
 }
 
-export function Photo({
+export const Photo = memo(function Photo({
   bookId,
   src,
   title,
@@ -82,6 +82,11 @@ export function Photo({
   favorite?: boolean;
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // A conversão para PNG é síncrona; não a repita ao selecionar livros.
+  const blurDataURL = useMemo(
+    () => (thumbhash ? createPngDataUri(thumbhash) : undefined),
+    [thumbhash]
+  );
   const badges = (
     <CoverBadges
       readStatus={readStatus}
@@ -109,8 +114,8 @@ export function Photo({
         alt={title}
         src={src}
         onError={() => setFailedSrc(src)}
-        {...(thumbhash
-          ? { blurDataURL: createPngDataUri(thumbhash), placeholder: 'blur' as const }
+        {...(blurDataURL
+          ? { blurDataURL, placeholder: 'blur' as const }
           : {})}
         fill
         sizes="(min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, (min-width: 640px) 25vw, 33vw"
@@ -122,4 +127,4 @@ export function Photo({
       {bookId !== undefined && <OfflineBadge bookId={bookId} />}
     </div>
   );
-}
+});

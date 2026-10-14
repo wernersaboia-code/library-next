@@ -207,7 +207,7 @@ export function BooksGrid({
                   type="button"
                   onClick={() => alternar(book.id)}
                   aria-pressed={marcado}
-                  className={`content-auto relative block rounded-md text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  className={`relative block rounded-md text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     marcado ? 'ring-2 ring-offset-2 ring-primary' : ''
                   }`}
                 >
@@ -231,6 +231,7 @@ export function BooksGrid({
             return (
               <Link
                 href={href}
+                prefetch={false}
                 key={book.id}
                 draggable
                 onDragStart={(e) =>
@@ -239,10 +240,9 @@ export function BooksGrid({
                     title: book.title,
                   })
                 }
-                className="content-auto block cursor-grab rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing md:hover:scale-[1.02]"
-                // O prefetch automático traz o loading, sem buscar a ficha
-                // completa de todas as capas visíveis. Os dados vêm quando
-                // há intenção de abrir um livro: hover ou foco do teclado.
+                className="block cursor-grab rounded-md transition ease-in-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing md:hover:scale-[1.02]"
+                // Rolar a grade não deve buscar uma rota para cada livro.
+                // Antecipamos a ficha apenas no hover ou foco do teclado.
                 onMouseEnter={() => router.prefetch(href)}
                 onFocus={() => router.prefetch(href)}
               >
