@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from './empty-state';
 import { SearchParams, stringifySearchParams } from '@/lib/url-state';
 import { definirPayloadLivro } from '@/lib/dnd';
+import { useCatalogPosition } from './use-catalog-position';
 
 interface Biblioteca {
   id: number;
@@ -21,12 +22,15 @@ export function BooksGrid({
   books,
   searchParams,
   bibliotecas,
+  userId,
 }: {
   books: GridBook[];
   searchParams: SearchParams;
   bibliotecas: Biblioteca[];
+  userId: string;
 }) {
   const router = useRouter();
+  const position = useCatalogPosition(userId, stringifySearchParams(searchParams));
   const [selecionando, setSelecionando] = useState(false);
   // A seleção vive só nesta página (AD-5): paginar limpa, e é assim de
   // propósito — estado que sobrevive à navegação falha de formas sutis.
@@ -139,7 +143,7 @@ export function BooksGrid({
   }
 
   return (
-    <div>
+    <div {...position}>
       {/* A seleção agora serve também à fila, então não depende mais de
           existir alguma biblioteca criada. */}
       <div className="mb-3 flex items-center gap-3">
@@ -231,6 +235,7 @@ export function BooksGrid({
             return (
               <Link
                 href={href}
+                data-book-id={book.id}
                 prefetch={false}
                 key={book.id}
                 draggable

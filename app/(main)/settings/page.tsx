@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { PageHeader } from '@/components/page-header';
+import { ExportReading } from '@/components/export-reading';
 
 export default function SettingsPage() {
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
@@ -38,6 +39,7 @@ export default function SettingsPage() {
           Conectado como <strong className="text-foreground">{email}</strong>
         </p>
       </section>
+      <ExportReading />
     </div>
   );
 }

@@ -161,6 +161,14 @@ export const bookCollections = pgTable(
   })
 );
 
+export const savedSearches = pgTable('saved_searches', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => appUsers.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  query: text('query').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({ userIdx: index('idx_saved_searches_user').on(t.userId) }));
+
 export const highlights = pgTable(
   'highlights',
   {

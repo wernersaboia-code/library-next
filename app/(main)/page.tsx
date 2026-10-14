@@ -10,7 +10,9 @@ import {
 } from '@/lib/db/queries';
 import { ReadingStrip } from '@/components/reading-strip';
 import { PageHeader } from '@/components/page-header';
-import { parseSearchParams, paginaValida } from '@/lib/url-state';
+import { parseSearchParams, paginaValida, stringifySearchParams } from '@/lib/url-state';
+import { SavedSearches } from '@/components/saved-searches';
+import { fetchSavedSearches } from '@/lib/db/saved-searches';
 import { getCurrentUserId } from '@/lib/auth-user';
 import { fetchCollections } from '@/lib/db/collections';
 
@@ -28,7 +30,7 @@ export default async function Page(
   // do alcance (URL à mão) rebusca com a página ajustada; o comum ganha um
   // round-trip a menos em toda carga.
   const requestedPage = Math.max(1, Number(parsedSearchParams.page) || 1);
-  const [estimatedTotal, bibliotecas, lendoAgora, stats, booksNaPaginaPedida] =
+  const [estimatedTotal, bibliotecas, lendoAgora, stats, booksNaPaginaPedida, estantes] =
     await Promise.all([
       estimateTotalBooks(userId, parsedSearchParams),
       fetchCollections(userId),
@@ -38,6 +40,7 @@ export default async function Page(
         ...parsedSearchParams,
         page: String(requestedPage),
       }),
+      fetchSavedSearches(userId),
     ]);
 
   const totalPages = Math.ceil(estimatedTotal / ITEMS_PER_PAGE);
@@ -61,7 +64,9 @@ export default async function Page(
       <div className="flex-grow overflow-auto min-h-[200px]">
         <div className="group-has-[[data-pending]]:animate-pulse p-4">
           <ReadingStrip livros={lendoAgora} />
+          <SavedSearches key={stringifySearchParams(parsedSearchParams)} initial={estantes} query={stringifySearchParams(parsedSearchParams)} />
           <BooksGrid
+            userId={userId}
             books={books}
             searchParams={parsedSearchParams}
             bibliotecas={bibliotecas}

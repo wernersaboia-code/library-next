@@ -82,7 +82,7 @@ export default async function Page(
       <div className="mx-auto max-w-5xl px-1 pb-10">
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="-ml-2">
-            <Link href={returnHref}>
+            <Link href={returnHref} scroll={browseReturnHref(from) !== null}>
               <ArrowLeftIcon className="mr-2 h-4 w-4" /> Voltar
             </Link>
           </Button>

@@ -79,6 +79,7 @@ beforeAll(async () => {
   await ctx.sql`
     insert into book_to_author (book_id, author_id)
     values (${bookAId}, 'author-1')`;
+  await ctx.sql`insert into saved_searches (user_id, name, query) values (${userA}, 'Leituras de A', 'status=lendo')`;
 });
 
 afterAll(async () => {
@@ -97,6 +98,15 @@ afterAll(async () => {
 });
 
 describe('RLS', () => {
+  it('estantes dinâmicas só podem ser vistas e removidas pelo dono', async () => {
+    expect(await asUser(userA, (tx) => tx`select id from saved_searches`)).toHaveLength(1);
+    expect(await asUser(userB, (tx) => tx`select id from saved_searches`)).toHaveLength(0);
+    await asUser(userB, (tx) => tx`delete from saved_searches`);
+    expect(await asUser(userA, (tx) => tx`select id from saved_searches`)).toHaveLength(1);
+  });
+  it('não permite salvar uma estante em nome de outra conta', async () => {
+    await expect(asUser(userB, (tx) => tx`insert into saved_searches (user_id, name, query) values (${userA}, 'Intrusa', 'lng=por')`)).rejects.toThrow(/row-level security/i);
+  });
   it('o dono enxerga os próprios destaques', async () => {
     const rows = await asUser(userA, (tx) => tx`select id from highlights`);
     expect(rows).toHaveLength(1);

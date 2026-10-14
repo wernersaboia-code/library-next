@@ -13,6 +13,8 @@ com acesso offline aos livros baixados pelo aplicativo.
 - Busca full-text em português, com _debounce_
 - Filtros por ano, avaliação, idioma, páginas, status de leitura, série e posse
 - Salto direto para qualquer página do acervo
+- Ao voltar de uma ficha, recuperação do livro e da posição na tela, conservando página e filtros
+- Estantes dinâmicas: salve buscas com nome; os resultados acompanham as mudanças do acervo
 - Séries agrupadas por nome, com o número do volume à parte
 - Páginas de autores e séries, com busca por nome, contagem de livros e paginação; séries em ordem de volume
 - Título original em língua original (ex.: "Dune" para "Duna"), editável em qualquer livro
@@ -27,6 +29,7 @@ com acesso offline aos livros baixados pelo aplicativo.
 - Notas e citações por livro
 - Painel com totais, páginas lidas e contagem por mês e por ano
 - Leitura em página (EPUB/PDF), com tradução de trechos e destaques
+- Exportação de histórico, avaliações, progresso e anotações em CSV e Markdown, em Configurações
 
 **Estantes**
 
@@ -159,6 +162,7 @@ Detalhes e validação em [docs/navegacao-autores-series.md](docs/navegacao-auto
 | `pnpm build` | Build de produção |
 | `pnpm test:run` | Suíte de testes |
 | `pnpm typecheck` | Verificação de tipos |
+| `pnpm test:browser` | Testes de componentes no Chromium, em desktop e celular |
 | `pnpm lint` | ESLint |
 | `pnpm db:migrate` | Aplica migrations — **estrutura** do banco |
 | `pnpm db:import-calibre` | Importa **livros** do Calibre |
@@ -188,6 +192,27 @@ ficam intocados a cada importação. A garantia é estrutural: o tipo
 campo fora da lista de catálogo.
 
 ## Documentação
+
+As estantes dinâmicas requerem a migration `0019_saved_searches` (`pnpm db:migrate`).
+São buscas da sua conta, disponíveis entre aparelhos; salvar não copia livros nem
+altera as coleções manuais. A página não faz parte da busca salva.
+
+Para os testes de navegador, execute `pnpm exec playwright install chromium` uma
+vez e depois `pnpm test:browser`. O laboratório usa os componentes reais da grade,
+estantes e exportação com dados sintéticos, navegação nativa e APIs simuladas,
+sem acessar contas ou livros reais. Os testes verificam estabilidade das fileiras,
+retorno por botão/histórico, salvar/remover estantes e download/erro de exportação.
+As medições de rolagem ficam em `test-results/**/scroll-metrics.json`; os intervalos
+entre quadros são diagnósticos, não limites rígidos de aprovação. O CI guarda esses
+resultados e screenshots por sete dias. Isso complementa a validação no app
+autenticado; não representa uma medição de desempenho em produção.
+
+A posição do acervo fica somente na aba do navegador, separada por conta e busca,
+por até 24 horas. Se o navegador bloquear o armazenamento, a navegação continua.
+Os downloads incluem somente dados da sessão autenticada, sem capas ou arquivos
+EPUB/PDF. CSV inclui notas e citações na coluna final; Markdown inclui também as
+localizações de leitura e dos destaques. São exportações para consulta, sem fluxo
+de reimportação automática.
 
 Specs e planos de implementação ficam em `docs/superpowers/`. Cada mudança
 relevante tem uma spec com as decisões de arquitetura e o porquê delas — é o

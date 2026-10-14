@@ -7,8 +7,13 @@
 
 /** Violação do índice único de nome — o dono já tem uma biblioteca assim. */
 export function ehNomeDuplicado(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && 'code' in err
-    && (err as { code?: string }).code === '23505';
+  // Drizzle pode embrulhar o erro do Postgres em `cause`.
+  let current = err;
+  for (let depth = 0; depth < 5 && typeof current === 'object' && current !== null; depth++) {
+    if ('code' in current && current.code === '23505') return true;
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return false;
 }
 
 export const NOME_DUPLICADO = 'Já existe uma biblioteca com esse nome';
