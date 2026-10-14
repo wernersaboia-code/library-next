@@ -50,9 +50,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.115.0
         version: 2.115.0(@opentelemetry/api@1.9.0)
-      autoprefixer:
-        specifier: ^10.5.5
-        version: 10.5.5(postcss@8.5.28)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -80,9 +77,6 @@ importers:
       next:
         specifier: ~15.5.27
         version: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.0)(@types/node@22.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      postcss:
-        specifier: 8.5.28
-        version: 8.5.28
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -116,12 +110,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.1
         version: 2.6.1
-      tailwindcss:
-        specifier: ^3.4.19
-        version: 3.4.19(tsx@4.17.0)
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.19(tsx@4.17.0))
       thumbhash:
         specifier: ^0.1.1
         version: 0.1.1
@@ -156,6 +144,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.11
         version: 4.1.11(vitest@4.1.11)
+      autoprefixer:
+        specifier: ^10.5.5
+        version: 10.5.5(postcss@8.5.28)
       drizzle-kit:
         specifier: 0.24.1
         version: 0.24.1(supports-color@7.2.0)
@@ -168,6 +159,15 @@ importers:
       eslint-config-next:
         specifier: 15.5.27
         version: 15.5.27(eslint@9.39.5(jiti@1.21.7)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.5.4)
+      postcss:
+        specifier: 8.5.28
+        version: 8.5.28
+      tailwindcss:
+        specifier: ^3.4.19
+        version: 3.4.19(tsx@4.17.0)
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.19(tsx@4.17.0))
       tsx:
         specifier: 4.17.0
         version: 4.17.0

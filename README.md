@@ -193,6 +193,10 @@ campo fora da lista de catálogo.
 
 ## Documentação
 
+As ferramentas de CSS ficam em `devDependencies`; veja
+[dependências de compilação e o alerta de braces](docs/dependencias-de-compilacao.md)
+para a distinção entre auditoria de produção e o risco residual nas ferramentas.
+
 As estantes dinâmicas requerem a migration `0019_saved_searches` (`pnpm db:migrate`).
 São buscas da sua conta, disponíveis entre aparelhos; salvar não copia livros nem
 altera as coleções manuais. A página não faz parte da busca salva.
